@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>The Remnant Youth — Roster</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Remnant Roster">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111111">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+
+<!-- Firebase: shared cloud storage so edits (Active status, Notes, Grade, Shirt Size, etc.)
+     sync live across every device instead of staying stuck in one phone's local storage. -->
+<script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    color-scheme: light;
+    --navy:#111111;
+    --navy-dark:#000000;
+    --border:#e5e8ec;
+    --bg:#f3f5f7;
+    --card:#ffffff;
+    --text:#1d2530;
+    --muted:#75808c;
+    --green:#1e6b3d;
+    --green-bg:#e2f4e8;
+    --orange:#a05a05;
+    --orange-bg:#fdecd6;
+    --red:#b23b3b;
+    --red-bg:#fbe8e8;
+    --yellow:#8a6d1f;
+    --yellow-bg:#fdf1c8;
+    --blue:#1d4ed8;
+    --blue-bg:#dce7fb;
+    --lime:#111111;
+    --lime-text:#9fe436;
+    --gray-badge:#6b7280;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:16px;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:calc(14px + env(safe-area-inset-top)) 16px 14px 16px;
+  }
+  header h1{margin:0 0 2px 0;font-size:19px;line-height:1.25;}
+  header p{margin:0;font-size:12.5px;color:#cfe0f0;line-height:1.4;}
+  .header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .refresh-btn{
+    flex:0 0 auto;
+    background:var(--lime-text);
+    color:#0d1a00;
+    border:none;
+    padding:8px 13px;
+    border-radius:20px;
+    font-size:12.5px;
+    font-weight:bold;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    white-space:nowrap;
+  }
+  .refresh-btn:active{opacity:0.8;}
+
+  .birthday-banner{margin:10px 12px 0 12px;background:linear-gradient(135deg,#fff3d6,#ffe4ee);border:1px solid #f5c56b;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+  .birthday-banner.hidden{display:none;}
+  .bb-title{font-size:12px;font-weight:bold;color:#8a5a00;text-transform:uppercase;letter-spacing:0.03em;}
+  .bb-row{display:flex;align-items:center;gap:10px;font-size:14px;color:#3a2a10;}
+  .bb-emoji{font-size:20px;line-height:1;}
+  .bb-text strong{color:#111;}
+  .bb-sub{display:block;font-size:12px;color:#8a6d1f;margin-top:1px;}
+
+  .toolbar{
+    position:sticky;
+    top:0;
+    z-index:10;
+    background:var(--card);
+    border-bottom:1px solid var(--border);
+    padding:10px 12px;
+  }
+  .summary-bar{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    color:var(--muted);
+    padding:2px 2px 10px 2px;
+  }
+  .summary-bar strong{color:var(--text);font-size:14px;}
+  .summary-sep{margin:0 4px;color:var(--border);}
+  .summary-dot{
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    margin-right:2px;
+  }
+  .dot-active{background:#34c759;}
+  .dot-total{background:#b7bcc3;}
+
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    padding-bottom:8px;
+  }
+  .chip{
+    flex:0 0 auto;
+    border:1.5px solid var(--navy);
+    background:#fff;
+    color:var(--navy);
+    padding:8px 12px;
+    border-radius:20px;
+    font-size:12.5px;
+    font-weight:bold;
+    white-space:nowrap;
+  }
+  .chip.chip-all.active{background:var(--navy);color:#fff;}
+  .chip.active{box-shadow:0 0 0 3px rgba(17,17,17,0.55);}
+  .chip .n{font-weight:normal;margin-left:3px;opacity:0.85;}
+  .chip-active-num{font-weight:bold;color:var(--green);}
+  .chip.chip-all.active .chip-active-num{color:var(--lime-text);}
+
+  .chip-RYLA{border-color:transparent;background:#9fe436;color:#0d1a00;}
+  .chip-Remnant-Kids{border-color:transparent;background:#1d4ed8;color:#ffffff;}
+  .chip-3x3-Basketball{border-color:transparent;background:#111111;color:#ffffff;}
+  .chip-Tutoring{border-color:transparent;background:#df206f;color:#ffffff;}
+  .chip-Other{border-color:transparent;background:#fec105;color:#0d1a00;}
+  .chip-RYLA .chip-active-num, .chip-Remnant-Kids .chip-active-num, .chip-3x3-Basketball .chip-active-num, .chip-Tutoring .chip-active-num, .chip-Other .chip-active-num{color:inherit;}
+
+  .row2{display:flex;gap:8px;align-items:center;}
+  #search{
+    flex:1;
+    padding:11px 14px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    font-size:16px;
+    background:#f7f8fa;
+  }
+  .sort-btn{
+    flex:0 0 auto;
+    border:1px solid var(--border);
+    background:#f7f8fa;
+    color:var(--navy-dark);
+    padding:11px 12px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:bold;
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+
+  .sort-panel{
+    display:none;
+    padding:12px 4px 2px 4px;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .sort-panel.open{display:flex;}
+  .sort-opt{
+    border:1px solid var(--border);
+    background:#f7f8fa;
+    padding:7px 12px;
+    border-radius:16px;
+    font-size:12.5px;
+    color:var(--text);
+  }
+  .sort-opt.active{background:var(--navy-dark);color:#fff;border-color:var(--navy-dark);}
+
+  .list{padding:12px;display:flex;flex-direction:column;gap:12px;}
+
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    border:1px solid var(--border);
+    box-shadow:0 1px 2px rgba(0,0,0,0.04);
+    overflow:hidden;
+    position:relative;
+    height:365px;
+    perspective:1400px;
+  }
+  .card.card-tall{height:435px;}
+  .card.card-taller{height:478px;}
+  .stu-flip-inner{
+    position:relative;
+    width:100%;
+    height:100%;
+    transition:transform .55s cubic-bezier(.4,.2,.2,1);
+    transform-style:preserve-3d;
+  }
+  .card.flipped .stu-flip-inner{transform:rotateY(180deg);}
+  .stu-face{
+    position:absolute;
+    inset:0;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    background:var(--card);
+  }
+  .stu-back{transform:rotateY(180deg);padding:16px;}
+  .stu-back-header{font-size:16px;font-weight:bold;color:var(--text);margin-bottom:2px;}
+  .back-flip-bar{margin-top:auto;}
+  .card-top{
+    padding:14px 14px 10px 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .student-name{font-size:17px;font-weight:bold;margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:7px;}
+  .parent-name{font-size:13.5px;color:var(--muted);margin:2px 0 0 0;}
+  .pay-badge{
+    flex:0 0 auto;
+    font-size:11px;
+    font-weight:bold;
+    padding:3px 9px;
+    border-radius:12px;
+    white-space:nowrap;
+  }
+  .pay-STEP{background:var(--blue-bg);color:var(--blue);}
+  .pay-Self{background:var(--green-bg);color:var(--green);}
+
+  .active-toggle{
+    flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+  }
+  .active-toggle .active-label{
+    font-size:10px;
+    font-weight:bold;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+  }
+  .ios-switch{
+    position:relative;
+    display:inline-block;
+    width:47px;
+    height:28px;
+    flex:0 0 auto;
+  }
+  .ios-switch input{opacity:0;width:0;height:0;}
+  .ios-switch-track{
+    position:absolute;
+    cursor:pointer;
+    inset:0;
+    background-color:#e2e3e6;
+    transition:background-color .2s;
+    border-radius:34px;
+  }
+  .ios-switch-track:before{
+    position:absolute;
+    content:"";
+    height:24px;
+    width:24px;
+    left:2px;
+    top:2px;
+    background-color:#fff;
+    transition:transform .2s;
+    border-radius:50%;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .ios-switch input:checked + .ios-switch-track{background-color:#34c759;}
+  .ios-switch input:checked + .ios-switch-track:before{transform:translateX(19px);}
+
+  .card.inactive{filter:grayscale(1);opacity:0.55;}
+
+  .badges{padding:0 14px 12px 14px;display:flex;flex-wrap:wrap;gap:6px;}
+  .badge{
+    font-size:11.5px;
+    font-weight:bold;
+    padding:4px 10px;
+    border-radius:10px;
+    white-space:nowrap;
+  }
+  .badge-RYLA{background:#9fe436;color:#0d1a00;}
+  .badge-Remnant-Kids{background:#1d4ed8;color:#ffffff;}
+  .badge-3x3-Basketball{background:#111111;color:#ffffff;}
+  .badge-Other{background:#fec105;color:#0d1a00;}
+  .badge-Tutoring{background:#df206f;color:#ffffff;}
+
+  .info-row{padding:0 14px 10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .info-label{font-size:11px;color:var(--muted);font-weight:bold;text-transform:uppercase;letter-spacing:0.03em;flex:0 0 auto;}
+  .info-select, .info-input{
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:6px 9px;
+    font-size:13.5px;
+    font-family:Arial, Helvetica, sans-serif;
+    background:#f7f8fa;
+    color:var(--text);
+    text-align:right;
+    max-width:58%;
+  }
+  .info-static{font-size:13.5px;color:var(--text);font-weight:bold;}
+  .subprog-toggles{display:flex;gap:6px;}
+  .subprog-chip{
+    border:1.5px solid var(--border);
+    background:#f7f8fa;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:bold;
+    padding:5px 10px;
+    border-radius:14px;
+  }
+  .subprog-chip.active{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+
+  .contact-row{
+    display:flex;
+    border-top:1px solid var(--border);
+  }
+  .contact-btn{
+    flex:1;
+    text-align:center;
+    padding:11px 8px;
+    font-size:13px;
+    font-weight:bold;
+    color:var(--navy);
+    text-decoration:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+  .contact-btn:not(:last-child){border-right:1px solid var(--border);}
+  .contact-btn .ic{font-size:14px;}
+
+  .toggle-summary{
+    width:100%;
+    background:#f7f8fa;
+    border:none;
+    border-top:1px solid var(--border);
+    padding:22px 14px;
+    font-size:13px;
+    font-weight:bold;
+    color:var(--navy-dark);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .toggle-summary.status-paid{background:var(--green-bg);color:var(--green);}
+  .toggle-summary.status-invoiced{background:var(--red-bg);color:var(--red);}
+  .toggle-summary.status-needs{background:var(--yellow-bg);color:var(--yellow);}
+  .toggle-summary .chev{transition:transform .15s;font-size:12px;color:inherit;opacity:0.65;}
+  .toggle-summary .hint{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:bold;opacity:0.65;background:none;border:none;padding:0;margin:0;font-family:inherit;color:inherit;cursor:pointer;width:100%;justify-content:flex-end;}
+  .toggle-summary{margin-top:auto;}
+
+  /* Payment status slider — three tappable segments on the front of every card. */
+  .status-slider{
+    width:100%;
+    display:flex;
+    border-top:1px solid var(--border);
+    margin-top:auto;
+  }
+  .status-seg{
+    flex:1;
+    border:none;
+    border-right:1px solid var(--border);
+    background:#f7f8fa;
+    color:var(--muted);
+    font-size:11px;
+    font-weight:bold;
+    padding:12px 4px;
+    text-align:center;
+    cursor:pointer;
+    line-height:1.25;
+  }
+  .status-seg:last-child{border-right:none;}
+  .status-seg.status-needs.active{background:var(--yellow-bg);color:var(--yellow);}
+  .status-seg.status-invoiced.active{background:var(--red-bg);color:var(--red);}
+  .status-seg.status-paid.active{background:var(--green-bg);color:var(--green);}
+
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{
+    display:block;
+    font-size:11.5px;
+    font-weight:bold;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    margin-bottom:5px;
+  }
+  .field input[type=text], .field textarea{
+    width:100%;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:16px;
+    font-family:Arial, Helvetica, sans-serif;
+    background:#fff;
+  }
+  .field textarea{resize:vertical;min-height:44px;}
+
+  .yn-group{display:flex;gap:8px;}
+  .yn-btn{
+    flex:1;
+    padding:10px;
+    border-radius:8px;
+    border:1.5px solid var(--border);
+    background:#fff;
+    font-size:14px;
+    font-weight:bold;
+    color:var(--muted);
+    text-align:center;
+  }
+  .yn-btn.yes-active{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+  .yn-btn.no-active{background:var(--red-bg);border-color:var(--red);color:var(--red);}
+
+  .detail-note{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.4;}
+
+  .notes-display{font-size:14px;color:var(--text);line-height:1.4;white-space:pre-wrap;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:8px;min-height:20px;}
+  .notes-empty{color:var(--muted);font-style:italic;}
+  .notes-edit-btn, .notes-save-btn{
+    margin-top:8px;
+    padding:8px 16px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:bold;
+    display:inline-block;
+  }
+  .notes-edit-btn{background:#f7f8fa;border:1px solid var(--border);color:var(--navy-dark);}
+  .notes-save-btn{background:var(--green);border:none;color:#fff;}
+
+  .empty-state{padding:60px 24px;text-align:center;color:var(--muted);font-size:14px;}
+  footer{padding:16px 20px 24px 20px;color:var(--muted);font-size:11.5px;line-height:1.5;text-align:center;}
+
+  /* Owed badge on roster cards */
+  .owed-row{padding:0 14px 12px 14px;display:flex;align-items:center;gap:6px;}
+  .owed-label{font-size:11px;color:var(--muted);font-weight:bold;text-transform:uppercase;letter-spacing:0.03em;}
+  .owed-amt{font-size:13px;font-weight:bold;padding:3px 10px;border-radius:10px;}
+  .owed-zero{background:var(--green-bg);color:var(--green);}
+  .owed-due{background:var(--red-bg);color:var(--red);}
+  .owed-none{background:#eef0f2;color:var(--muted);}
+
+  /* View toggle */
+  .view-toggle{display:flex;gap:0;background:rgba(255,255,255,0.12);border-radius:10px;padding:3px;margin-top:10px;}
+  .view-btn{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:13px;font-weight:bold;color:#cfe0f0;background:transparent;border:none;}
+  .view-btn.active{background:var(--lime-text);color:#0d1a00;}
+
+  /* Finance view */
+  #financeView{display:none;padding:12px;}
+  #financeView.open{display:block;}
+  #rosterView.hidden{display:none;}
+  .fin-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .fin-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+  .fin-stat .fin-label{font-size:11px;color:var(--muted);font-weight:bold;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;}
+  .fin-stat .fin-value{font-size:20px;font-weight:bold;color:var(--text);}
+  .fin-stat.fin-owed .fin-value{color:var(--red);}
+  .fin-stat.fin-paid .fin-value{color:var(--green);}
+  .fin-section-title{font-size:13px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;margin:18px 4px 8px 4px;}
+  .fin-prog-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:14px;}
+  .fin-prog-row .fp-name{font-weight:bold;}
+  .fin-prog-row .fp-nums{color:var(--muted);font-size:12.5px;}
+  .fin-fam-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+  .fin-fam-top{display:flex;justify-content:space-between;align-items:center;}
+  .fin-fam-name{font-weight:bold;font-size:14px;}
+  .fin-fam-owed{font-weight:bold;font-size:14px;color:var(--red);}
+  .fin-fam-students{font-size:12px;color:var(--muted);margin-top:4px;}
+  .fin-empty{text-align:center;color:var(--muted);font-size:13px;padding:20px;}
+  .fin-note{font-size:11.5px;color:var(--muted);line-height:1.5;padding:8px 4px 0 4px;}
+
+  /* Program flip cards */
+  .prog-flip{perspective:1400px;margin-bottom:14px;height:236px;cursor:pointer;}
+  .prog-flip-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;}
+  .prog-flip.flipped .prog-flip-inner{transform:rotateY(180deg);}
+  .prog-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);display:flex;flex-direction:column;overflow:hidden;}
+  .prog-back{transform:rotateY(180deg);}
+  .prog-title{font-size:17px;font-weight:bold;padding:16px;}
+  .prog-drawer-RYLA{background:#9fe436;color:#0d1a00;}
+  .prog-drawer-Remnant-Kids{background:#1d4ed8;color:#ffffff;}
+  .prog-drawer-3x3-Basketball{background:#111111;color:#ffffff;}
+  .prog-drawer-Tutoring{background:#df206f;color:#ffffff;}
+  .prog-drawer-Other{background:#fec105;color:#0d1a00;}
+  .prog-face-body{padding:16px;flex:1;display:flex;flex-direction:column;overflow-y:auto;}
+  .fin-main-title{font-size:15px;font-weight:bold;color:var(--text);margin:4px 4px 10px 4px;}
+  .fin-period-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--navy);border-radius:12px;padding:12px 14px;margin:0 4px 14px 4px;}
+  .fin-period-label{font-size:12px;color:#cfe0f0;font-weight:bold;}
+  .fin-period-select{
+    background:var(--lime-text);
+    color:#0d1a00;
+    border:none;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:14px;
+    font-weight:bold;
+    max-width:60%;
+  }
+  .prog-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;}
+  .prog-stat{background:#f7f8fa;border-radius:10px;padding:9px 11px;display:flex;flex-direction:column;justify-content:center;}
+  .prog-stat .ps-label{font-size:10px;color:var(--muted);font-weight:bold;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:3px;}
+  .prog-stat .ps-value{font-size:16.5px;font-weight:bold;color:var(--text);}
+  .prog-stat.ps-owed .ps-value{color:var(--red);}
+  .prog-stat.ps-paid .ps-value{color:var(--green);}
+  .prog-tap-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;opacity:0.8;}
+  .prog-owed-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+  .prog-owed-row{display:flex;justify-content:space-between;align-items:baseline;background:#f7f8fa;border-radius:8px;padding:8px 10px;font-size:13px;}
+  .prog-owed-row .pw-name{font-weight:bold;color:var(--text);}
+  .prog-owed-row .pw-nums{text-align:right;}
+  .prog-owed-row .pw-owed{color:var(--red);font-weight:bold;}
+  .prog-owed-row .pw-billed{color:var(--muted);font-size:11px;display:block;}
+  .prog-owed-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;}
+
+  /* Activity by month */
+  .activity-month{margin-bottom:8px;}
+  .activity-month-header{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13.5px;font-weight:bold;color:var(--text);}
+  .activity-month-header .am-chev{font-size:12px;color:var(--muted);transition:transform .15s;}
+  .activity-month.open .am-chev{transform:rotate(180deg);}
+  .activity-month-header .am-total{font-weight:normal;color:var(--muted);font-size:12px;}
+  .activity-entries{display:none;flex-direction:column;gap:6px;margin-top:6px;}
+  .activity-month.open .activity-entries{display:flex;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>The Remnant Youth — Roster</h1>
+      <p>Tap a card for payment details. Tap a filter chip to narrow the list.</p>
+    </div>
+    <button id="refreshBtn" class="refresh-btn" title="Reload latest data">⟳ Refresh</button>
+  </div>
+  <div class="view-toggle">
+    <button class="view-btn active" id="btnRosterView" data-view="roster">Roster</button>
+    <button class="view-btn" id="btnFinanceView" data-view="finance">Finance</button>
+  </div>
+  <p id="lastUpdated" style="margin:8px 2px 0 2px;font-size:11px;color:#9fb3c4;"></p>
+</header>
+
+<div id="rosterView">
+<div class="birthday-banner hidden" id="birthdayBanner">
+  <div class="bb-title">🎉 Upcoming Birthdays</div>
+  <div id="birthdayList"></div>
+</div>
+<div class="toolbar">
+  <div class="summary-bar">
+    <span class="summary-dot dot-active"></span><strong id="activeCount">0</strong> Active
+    <span class="summary-sep">/</span>
+    <span class="summary-dot dot-total"></span><strong id="totalCount">0</strong> Total
+  </div>
+  <div class="chip-row" id="chipRow">
+    <button class="chip chip-all active" data-filter="All">All <span class="n" id="n-All"></span></button>
+    <button class="chip chip-RYLA" data-filter="RYLA">RYLA <span class="n" id="n-RYLA"></span></button>
+    <button class="chip chip-Remnant-Kids" data-filter="Remnant Kids">Remnant Kids <span class="n" id="n-Remnant Kids"></span></button>
+    <button class="chip chip-3x3-Basketball" data-filter="3x3 Basketball">3x3 Basketball <span class="n" id="n-3x3 Basketball"></span></button>
+    <button class="chip chip-Tutoring" data-filter="Tutoring">Tutoring <span class="n" id="n-Tutoring"></span></button>
+    <button class="chip chip-Other" data-filter="Other">Other <span class="n" id="n-Other"></span></button>
+  </div>
+  <div class="row2">
+    <input type="text" id="search" placeholder="Search student or parent...">
+    <button class="sort-btn" id="sortToggle">Sort ▾</button>
+  </div>
+  <div class="sort-panel" id="sortPanel">
+    <button class="sort-opt active" data-sort="student">Last Name</button>
+    <button class="sort-opt" data-sort="parent">Parent</button>
+    <button class="sort-opt" data-sort="payment">Payment</button>
+    <button class="sort-opt" data-sort="dir">↕ Reverse</button>
+  </div>
+</div>
+
+<div class="list" id="list"></div>
+<div class="empty-state" id="emptyState" style="display:none;">No students match this filter/search.</div>
+</div>
+
+<div id="financeView">
+  <div class="fin-main-title">All Remnant Youth Programs</div>
+  <div class="fin-period-row">
+    <span class="fin-period-label">Showing financials for</span>
+    <select id="financeMonthSelect" class="fin-period-select"></select>
+  </div>
+  <div class="fin-summary">
+    <div class="fin-stat"><div class="fin-label">Total Billed</div><div class="fin-value" id="finBilled">$0.00</div></div>
+    <div class="fin-stat fin-paid"><div class="fin-label">Total Paid</div><div class="fin-value" id="finPaid">$0.00</div></div>
+    <div class="fin-stat fin-owed"><div class="fin-label">Total Owed</div><div class="fin-value" id="finOwed">$0.00</div></div>
+    <div class="fin-stat"><div class="fin-label">Families w/ Balance</div><div class="fin-value" id="finFamCount">0</div></div>
+  </div>
+
+  <div class="fin-section-title">By Program</div>
+  <div id="finPrograms"></div>
+
+  <div class="fin-section-title">Families Ranked by Amount Owed</div>
+  <div id="finFamilies"></div>
+
+  <div class="fin-section-title">Recent Payment Activity</div>
+  <div id="finActivity"></div>
+
+  <div class="fin-note" id="finNote">Snapshot pulled from Wix invoicing. This view does not auto-sync live — ask Claude to re-pull Wix data for the latest numbers.</div>
+</div>
+
+<footer>The Remnant Youth Leadership Academy Enrollment Roster · Edits to Paid Through / Invoice / Paid / Notes save automatically on this device.</footer>
+
+<script>
+const ROSTER = [
+  {
+    "student": "Aaron Barfield",
+    "parent": "Tiffany Barfield",
+    "phone": "+1 813-469-7155",
+    "email": "thebarfields2012@gmail.com",
+    "programs": [
+      "3x3 Basketball",
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3on3 Live (3x3 Basketball Training). Added RYLA 2026-08-05 \u2014 invoice sent for $415 (tuition $240 + supply fee $100 + registration fee $75).",
+    "defaultGrade": "7th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 0,
+    "birthday": "2013-03-22"
+  },
+  {
+    "student": "Abram McHenry",
+    "parent": "Alisha McHenry",
+    "phone": "+1 813-838-5451",
+    "email": "alisha.mchenry86@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Painting With A Twist - (May 1)",
+    "defaultGrade": "2nd Grade",
+    "id": 1,
+    "birthday": "2018-01-18",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Amelia Rodriguez",
+    "parent": "Nicole Rodriguez",
+    "phone": "",
+    "email": "rodriguezfamily016@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices",
+    "id": 2
+  },
+  {
+    "student": "Andres Williams",
+    "parent": "Amy Williams",
+    "phone": "+1 813-833-8143",
+    "email": "congenialmom@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Manually added",
+    "defaultInvoiceSent": "Yes",
+    "defaultPaid": "No",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 3
+  },
+  {
+    "student": "Avarielle Campbell",
+    "parent": "Leanne Campbell",
+    "phone": "+1 813-452-0062",
+    "email": "leeleecampbell@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Painting With A Twist",
+    "defaultGrade": "5th Grade",
+    "id": 4,
+    "birthday": "2017-05-05",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Ayden Ortiz",
+    "parent": "Yalitza Soto",
+    "phone": "+1 407-267-8294",
+    "email": "yalitzaortiz2003@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Spring STEM + Literacy - *5 weeks - (Starts April 30)",
+    "defaultGrade": "2nd Grade",
+    "id": 5,
+    "birthday": "2018-06-06",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Braden Clark",
+    "parent": "Katina Clark",
+    "phone": "",
+    "email": "katinayclark@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Newly enrolled",
+    "id": 6,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Braxtyn Clark",
+    "parent": "Katina Clark",
+    "phone": "",
+    "email": "katinayclark@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Newly enrolled",
+    "id": 7,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Brayden Ortiz",
+    "parent": "Yalitza Soto",
+    "phone": "+1 407-267-8294",
+    "email": "yalitzaortiz2003@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Spring STEM + Literacy - *5 weeks - (Starts April 30)",
+    "defaultGrade": "2nd Grade",
+    "id": 8,
+    "birthday": "2018-06-06",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Brayson Amerman",
+    "parent": "Michelle Amerman",
+    "phone": "+1 813-309-2520",
+    "email": "deberma@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Painting With A Twist - (May 1)",
+    "defaultGrade": "2nd Grade",
+    "id": 9,
+    "birthday": "2018-07-09",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Cashton Ricci",
+    "parent": "Nicole Ferraro",
+    "phone": "+1 262-806-2408",
+    "email": "nikkiricci29@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "Self-Pay",
+    "detail": "From enrollment form: 3x3 Basketball Training - (Thursdays)",
+    "defaultGrade": "3rd Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 10,
+    "birthday": "2018-01-29",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Christian Theriault",
+    "parent": "Vanessa Theriault",
+    "phone": "+1 813-235-7134",
+    "email": "vanessa-theriault@outlook.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy",
+    "defaultGrade": "10th Grade",
+    "id": 11,
+    "birthday": "2010-05-21",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Christopher Guzman",
+    "parent": "Carly Justo",
+    "phone": "+1 813-409-4789",
+    "email": "jcarly918@gmail.com",
+    "programs": [
+      "RYLA",
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays  **Starting August 7** = $240/ month. Added 3x3 Basketball 2026-08-12 per Kevin \u2014 confirmed by a Wix invoice billing him for 3x3 Basketball tuition.",
+    "defaultGrade": "7th Grade",
+    "defaultShirt": "Medium",
+    "id": 12,
+    "birthday": "2013-09-18"
+  },
+  {
+    "student": "Dhristian Mitchell",
+    "parent": "Christine Morton Mitchell",
+    "phone": "+1 813-609-9688",
+    "email": "daniandsons@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3on3 Live (Basketball Training)",
+    "defaultGrade": "6th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 13,
+    "birthday": "2016-05-27",
+    "defaultActive": "No"
+  },
+  {
+    "student": "EJ Roberts",
+    "parent": "KEvin Roberts",
+    "phone": "+1 904-616-9964",
+    "email": "kevroberts43@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Kids (Grades  K-5) **Starting August 5** = $240/ month",
+    "defaultGrade": "3rd Grade",
+    "defaultShirt": "Youth Small",
+    "id": 14
+  },
+  {
+    "student": "Elijah Rodriguez",
+    "parent": "Joel Rodriguez / Liannie Rodriguez",
+    "phone": "+1 407-712-5488",
+    "email": "liannierodriguez@yahoo.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3on3 Live (Basketball Training); Summer 3x3 Development Clinic (Grades 3-5) - June 22 - 25",
+    "defaultGrade": "6th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 15,
+    "birthday": "2017-03-01"
+  },
+  {
+    "student": "Emi Cruz",
+    "parent": "Gabriela Cruz",
+    "phone": "",
+    "email": "gabrielacruz317@gmail.com",
+    "programs": [
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices",
+    "id": 16
+  },
+  {
+    "student": "Evan Martin",
+    "parent": "Leanne Martin",
+    "phone": "+1 603-327-4267",
+    "email": "leannemartin476@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "Self-Pay",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays  **Starting August 7** = $240/ month",
+    "defaultGrade": "9th Grade",
+    "defaultShirt": "Medium",
+    "id": 17,
+    "birthday": "2012-05-16"
+  },
+  {
+    "student": "Ezra Ten Brink",
+    "parent": "Meghan Ten Brink",
+    "phone": "+1 813-469-4041",
+    "email": "megtenbrink@yahoo.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3on3 Live (3x3 Basketball Training)",
+    "defaultGrade": "5th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 18,
+    "birthday": "2015-05-10",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Francisco Cubilla",
+    "parent": "Gabriela Cruz",
+    "phone": "+1 415-656-6926",
+    "email": "gabrielacruz317@gmail.com",
+    "programs": [
+      "RYLA",
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays  **Starting August 7** = $240/ month Added Tutoring 2026-08-23 per Kevin.",
+    "defaultGrade": "9th Grade",
+    "defaultShirt": "Large",
+    "id": 19,
+    "birthday": "2011-08-31"
+  },
+  {
+    "student": "Gabriel Cubilla",
+    "parent": "Gabriela Cruz",
+    "phone": "+1 415-656-6926",
+    "email": "gabrielacruz317@gmail.com",
+    "programs": [
+      "RYLA",
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays  **Starting August 7** = $240/ month Added Tutoring 2026-08-23 per Kevin.",
+    "defaultGrade": "8th Grade",
+    "defaultShirt": "Medium",
+    "id": 20,
+    "birthday": "2012-11-07"
+  },
+  {
+    "student": "Greyson Stream",
+    "parent": "Julie Smallwood",
+    "phone": "+1 815-979-3273",
+    "email": "juliesmallwood3@gmail.com",
+    "programs": [
+      "3x3 Basketball",
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3x3 Basketball Training - (Thursdays); Spring STEM + Literacy - *5 weeks - (Starts April 30)",
+    "defaultGrade": "4th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 21,
+    "birthday": "2016-07-14",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Isaac Zechmann",
+    "parent": "Danielle Zechmann",
+    "phone": "",
+    "email": "daniellezechmann@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Newly enrolled",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 22
+  },
+  {
+    "student": "Jacania Rodriguez",
+    "parent": "Kimberly Rodriguez",
+    "phone": "+1 727-953-2864",
+    "email": "kroderz546@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy",
+    "defaultGrade": "7th Grade",
+    "id": 23,
+    "birthday": "2013-03-29"
+  },
+  {
+    "student": "Jayden Ortiz",
+    "parent": "Yalitza Soto",
+    "phone": "+1 407-267-8294",
+    "email": "yalitzaortiz2003@gmail.com",
+    "programs": [
+      "3x3 Basketball",
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3x3 Basketball Training - (Thursdays) Added to Other 2026-08-23 \u2014 Kevin listed both \"Jaden Ortiz\" (3x3) and \"Jayden Ortiz\" (Other) on the same active-roster sweep; treated as the same student pending confirmation.",
+    "defaultGrade": "6th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "Yes",
+    "id": 24,
+    "birthday": "2014-05-24"
+  },
+  {
+    "student": "Jionni Acosta",
+    "parent": "Melissa Lugo",
+    "phone": "+1 656-210-3211",
+    "email": "melissalugo617@gmail.com",
+    "programs": [
+      "3x3 Basketball",
+      "RYLA"
+    ],
+    "payment": "Self-Pay",
+    "detail": "From enrollment form: 3on3 Live (Basketball Training); Remnant Leadership Academy",
+    "defaultGrade": "6th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 25,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Joseph Campbell",
+    "parent": "Leanne Campbell",
+    "phone": "+1 813-452-0062",
+    "email": "leeleecampbell@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Painting With A Twist",
+    "defaultGrade": "5th Grade",
+    "id": 26,
+    "birthday": "2015-10-01",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Jude Ten Brink",
+    "parent": "Meghan Ten Brink",
+    "phone": "+1 813-469-4041",
+    "email": "megtenbrink@yahoo.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3on3 Live (Basketball Training)",
+    "defaultGrade": "6th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 27,
+    "birthday": "2014-10-04",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Julianna Guzman",
+    "parent": "Carly Justo",
+    "phone": "+1 813-409-4789",
+    "email": "jcarly918@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays  **Starting August 7** = $240/ month",
+    "defaultGrade": "6th Grade",
+    "defaultShirt": "Medium",
+    "id": 28,
+    "birthday": "2015-08-08"
+  },
+  {
+    "student": "Kylie Collins",
+    "parent": "Heather Collins",
+    "phone": "+1 813-495-8176",
+    "email": "hcollins76@yahoo.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy",
+    "defaultGrade": "5th Grade",
+    "id": 29,
+    "birthday": "2014-08-09",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Liam Rogers",
+    "parent": "Angey Rogers",
+    "phone": "",
+    "email": "awylf77@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Manually added",
+    "defaultInvoiceSent": "Yes",
+    "defaultPaid": "Yes",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 30
+  },
+  {
+    "student": "Lily Cooke",
+    "parent": "Amanda Arey",
+    "phone": "+1 863-800-7744",
+    "email": "lmcparents15@gmail.com",
+    "programs": [
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Painting With A Twist",
+    "defaultGrade": "4th Grade",
+    "id": 31,
+    "birthday": "2015-10-28",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Marcellus Ramirez",
+    "parent": "Katherine Ramirez",
+    "phone": "+1 347-456-8219",
+    "email": "celestialfitteam@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Manually added",
+    "defaultInvoiceSent": "Yes",
+    "defaultPaid": "Yes",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 32
+  },
+  {
+    "student": "Milo Callihan",
+    "parent": "Courtney Bush",
+    "phone": "+1 863-860-1102",
+    "email": "cplummer0528@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3x3 Basketball Play Lab (Grades 4-8) - Thursdays 10:00am - 2:00pm",
+    "defaultGrade": "7th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 33,
+    "birthday": "2013-05-29",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Neigha Tooley",
+    "parent": "Christyn Hamel",
+    "phone": "+1 863-226-9975",
+    "email": "christyn.hamel@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy",
+    "defaultGrade": "8th Grade",
+    "id": 34,
+    "birthday": "2012-11-09"
+  },
+  {
+    "student": "Noah Stream",
+    "parent": "Julie Smallwood",
+    "phone": "+1 815-979-3273",
+    "email": "juliesmallwood3@gmail.com",
+    "programs": [
+      "3x3 Basketball",
+      "Other"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3x3 Basketball Training - (Thursdays); Spring STEM + Literacy - *5 weeks - (Starts April 30)",
+    "defaultGrade": "1st Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 35,
+    "birthday": "2019-01-16",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Prince Smith",
+    "parent": "Brittany Smith",
+    "phone": "+1 469-988-1630",
+    "email": "brinicholesmith@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "Self-Pay",
+    "detail": "From enrollment form: Remnant Leadership Academy",
+    "defaultGrade": "7th Grade",
+    "id": 36,
+    "birthday": "2012-08-19",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Rebekah Conley",
+    "parent": "Wendy Conley",
+    "phone": "+1 813-244-7862",
+    "email": "wendyconley1@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: RYLA Summer Academy (Grades 6-12) - June 8 -  June 12; Remnant Leadership Academy (Grades 6-12) - Fridays",
+    "defaultGrade": "8th Grade",
+    "id": 37,
+    "birthday": "2011-12-03",
+    "defaultActive": "No"
+  },
+  {
+    "student": "River Ten Brink",
+    "parent": "Meghan Ten Brink",
+    "phone": "+1 813-469-4041",
+    "email": "megtenbrink@yahoo.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3on3 Live (3x3 Basketball Training)",
+    "defaultGrade": "7th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 38,
+    "birthday": "2013-06-24",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Ronin Fenton",
+    "parent": "Sarah Fenton",
+    "phone": "+1 813-997-2448",
+    "email": "rafparents@gmail.com",
+    "programs": [
+      "Remnant Kids",
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Painting With A Twist; Remnant Kids (Grades  K-5) **Starting August** = $240/ month; Spring STEM + Literacy - *5 weeks - (Starts April 30) Removed from Other, added Tutoring 2026-08-23 per Kevin\u2019s active roster confirmation.",
+    "defaultGrade": "2nd Grade",
+    "id": 39,
+    "birthday": "2019-04-07"
+  },
+  {
+    "student": "Selena Khedekar",
+    "parent": "Sophia Khedekar",
+    "phone": "+1 978-407-3028",
+    "email": "sophia.anita8@gmail.com",
+    "programs": [
+      "Remnant Kids",
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Kids (Grades  K-5) **Starting August** = $240/ month; Remnant Virtual Classroom (Grades K-12) Removed from Other, added Tutoring 2026-08-23 per Kevin\u2019s active roster confirmation.",
+    "defaultGrade": "Kindergarden",
+    "id": 40,
+    "birthday": "2021-07-15"
+  },
+  {
+    "student": "Sophia Rodriguez",
+    "parent": "Nicole Rodriguez",
+    "phone": "",
+    "email": "rodriguezfamily016@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices. Moved from Remnant Kids to RYLA 2026-08-07 per Kevin \u2014 she's 6th grade.",
+    "defaultGrade": "6th Grade",
+    "id": 41
+  },
+  {
+    "student": "Yuliani Rodriguez",
+    "parent": "Kimberly Rodriguez",
+    "phone": "+1 727-953-2864",
+    "email": "kroderz546@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy",
+    "defaultGrade": "10th Grade",
+    "id": 42,
+    "birthday": "2009-09-18"
+  },
+  {
+    "student": "Zakariah Riggan",
+    "parent": "Darrell Lake",
+    "phone": "+1 813-610-3508",
+    "email": "darrell.lake88@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3x3 Basketball Play Lab (Grades 4-8) - Thursdays 10:00am - 2:00pm = $240/ month",
+    "defaultGrade": "7th Grade",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 43,
+    "birthday": "2014-03-10",
+    "defaultActive": "No"
+  },
+  {
+    "student": "Sophie Barfield",
+    "parent": "Tiffany Barfield",
+    "phone": "+1 813-469-7155",
+    "email": "thebarfields2012@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "Sibling of Aaron Barfield, same contact info. Added by Kevin 2026-08-05, no enrollment form on file yet \u2014 invoice sent for $415 (tuition $240 + supply fee $100 + registration fee $75).",
+    "id": 44
+  },
+  {
+    "student": "Madelyn Barfield",
+    "parent": "Tiffany Barfield",
+    "phone": "+1 813-469-7155",
+    "email": "thebarfields2012@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "Sibling of Aaron Barfield, same contact info. Added by Kevin 2026-08-05, no enrollment form on file yet \u2014 invoice sent for $415 (tuition $240 + supply fee $100 + registration fee $75).",
+    "id": 45
+  },
+  {
+    "student": "Penelope Barfield",
+    "parent": "Tiffany Barfield",
+    "phone": "+1 813-469-7155",
+    "email": "thebarfields2012@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "Sibling of Aaron Barfield, same contact info. Added by Kevin 2026-08-05, no enrollment form on file yet \u2014 invoice sent for $415 (tuition $240 + supply fee $100 + registration fee $75).",
+    "id": 46
+  },
+  {
+    "student": "Rashad Lovett Jr",
+    "parent": "Kaceria Lovett",
+    "phone": "+1 910-760-2188",
+    "email": "kacerial@icloud.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form submitted 2026-08-05: selected Remnant Kids. Listed grade is 6th (past Remnant Kids' usual K-5 range), but Kevin placed him in Remnant Kids anyway as a special case \u2014 his maturity level fits that class better than RYLA.",
+    "defaultGrade": "6th Grade",
+    "defaultShirt": "Youth Medium",
+    "id": 47,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Ra'Shelle Lovett",
+    "parent": "Kaceria Lovett",
+    "phone": "+1 910-760-2188",
+    "email": "kacerial@icloud.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form submitted 2026-08-05: Remnant Kids (Grades K-5).",
+    "defaultGrade": "4th Grade",
+    "defaultShirt": "Youth Medium",
+    "id": 48,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Rahmarr Lovett",
+    "parent": "Kaceria Lovett",
+    "phone": "+1 910-760-2188",
+    "email": "kacerial@icloud.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form submitted 2026-08-05: Remnant Kids (Grades K-5). Goes by the nickname \"Prince,\" per Kevin.",
+    "defaultGrade": "2nd Grade",
+    "defaultShirt": "Youth Small",
+    "id": 49,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Rahmarr Lovett (Kindergarten)",
+    "parent": "Kaceria Lovett",
+    "phone": "+1 910-760-2188",
+    "email": "kacerial@icloud.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form submitted 2026-08-05: Remnant Kids (Grades K-5). Shares a first name with his sibling (id 49, \"Prince,\" 2nd Grade) \u2014 the form's birthday for this entry matched his sibling Ra'Shelle's exactly, so per Kevin the birthday is unreliable and grade level was used instead. \"(Kindergarten)\" added to the name here just to tell the two Rahmarrs apart on the roster.",
+    "defaultGrade": "Kindergarden",
+    "defaultShirt": "Youth Small",
+    "id": 50,
+    "defaultActive": "No"
+  },
+  {
+    "student": "Ronnie Schurdell",
+    "parent": "Tori Schurdell",
+    "phone": "",
+    "email": "victoria_kathryn@rocketmail.com",
+    "programs": [
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history 2026-08-13, per Kevin. Tutoring only on Wix invoices so far.",
+    "id": 51
+  },
+  {
+    "student": "Riley Schurdell",
+    "parent": "Tori Schurdell",
+    "phone": "",
+    "email": "victoria_kathryn@rocketmail.com",
+    "programs": [
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history 2026-08-13, per Kevin. Tutoring only on Wix invoices so far.",
+    "id": 52
+  },
+  {
+    "student": "TJ Schurdell",
+    "parent": "Tori Schurdell",
+    "phone": "",
+    "email": "victoria_kathryn@rocketmail.com",
+    "programs": [
+      "Tutoring"
+    ],
+    "payment": "STEP UP",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history 2026-08-13, per Kevin. Tutoring only on Wix invoices so far.",
+    "id": 53
+  },
+  {
+    "student": "Bree Hayes",
+    "parent": "Lindsey Hayes",
+    "phone": "+1 417-621-1598",
+    "email": "lindsey.j.hayes10@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays. Added to active roster 2026-08-23 per Kevin.",
+    "defaultGrade": "11th Grade",
+    "defaultShirt": "Medium",
+    "id": 54,
+    "birthday": "2010-07-15"
+  },
+  {
+    "student": "Robert Green",
+    "parent": "Candace Fleming",
+    "phone": "+1 813-320-4759",
+    "email": "candaceng12@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays. Second parent on file: Justin Simmons. Added to active roster 2026-08-23 per Kevin.",
+    "defaultGrade": "9th Grade",
+    "defaultShirt": "Large",
+    "id": 55,
+    "birthday": "2012-05-22"
+  },
+  {
+    "student": "Caleb Chu",
+    "parent": "Kevin Roberts",
+    "phone": "",
+    "email": "",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "Kevin's son. Added to active roster 2026-08-23 per Kevin, no enrollment form / contact info needed on file.",
+    "id": 56
+  },
+  {
+    "student": "Charlotte Barfield",
+    "parent": "Tiffany Barfield",
+    "phone": "+1 813-469-7155",
+    "email": "thebarfields2012@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "Sibling of Aaron, Sophie, Madelyn, and Penelope Barfield, same contact info. Added to active roster 2026-08-23 per Kevin, no enrollment form on file yet.",
+    "id": 57
+  },
+  {
+    "student": "Cameron Kongmanichanh",
+    "parent": "Georgia Kongmanichanh",
+    "phone": "+1 330-354-3431",
+    "email": "georgiarncde@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "Self-Pay",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays. Second parent on file: Visane Kongmanichanh. Added to active roster 2026-08-27 per Kevin.",
+    "defaultGrade": "10th Grade",
+    "defaultShirt": "Extra Large",
+    "id": 58,
+    "birthday": "2011-05-26"
+  },
+  {
+    "student": "Luke Lewis",
+    "parent": "Ana Lewis",
+    "phone": "+1 813-298-6623",
+    "email": "analewis310@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays. Second parent on file: Homrry Lewis. Added to active roster 2026-09-14 (new signup).",
+    "defaultGrade": "8th Grade",
+    "defaultShirt": "Small",
+    "id": 59,
+    "birthday": "2013-05-10"
+  },
+  {
+    "student": "Penelope Gonzalez",
+    "parent": "Shafra Carrera",
+    "phone": "+1 540-538-0348",
+    "email": "Gonzalezfamof8@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays. Second parent on file: Carlos Gonzalez. Added to active roster 2026-09-14 (new signup).",
+    "defaultGrade": "6th Grade",
+    "defaultShirt": "Small",
+    "id": 60,
+    "birthday": "2015-01-06"
+  },
+  {
+    "student": "Carl-El Gonzalez",
+    "parent": "Shafra Carrera",
+    "phone": "+1 540-538-0348",
+    "email": "Gonzalezfamof8@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: selected Remnant Leadership Academy (Grades 6-12), but he's 3rd grade — per Kevin, placed in Remnant Kids (K-5) instead to match grade level. Second parent on file: Carlos Gonzalez. Added to active roster 2026-09-14 (new signup).",
+    "defaultGrade": "3rd Grade",
+    "defaultShirt": "Medium",
+    "id": 61,
+    "birthday": "2018-06-27"
+  },
+  {
+    "student": "Sarai Gonzalez",
+    "parent": "Shafra Carrera",
+    "phone": "+1 540-538-0348",
+    "email": "Gonzalezfamof8@gmail.com",
+    "programs": [
+      "Remnant Kids"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: selected Remnant Leadership Academy (Grades 6-12), but she's 4th grade — per Kevin, placed in Remnant Kids (K-5) instead to match grade level. Second parent on file: Carlos Gonzalez. Added to active roster 2026-09-14 (new signup).",
+    "defaultGrade": "4th Grade",
+    "defaultShirt": "Large",
+    "id": 62,
+    "birthday": "2016-09-19"
+  },
+  {
+    "student": "Isaac Santiago Adorno",
+    "parent": "Rosaidy Adorno Munoz",
+    "phone": "+1 407-267-8294",
+    "email": "rosaidy2@gmail.com",
+    "programs": [
+      "3x3 Basketball"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: 3x3 Basketball Play Lab (Grades 4-8) - Thursdays 10:00am - 2:00pm. Second parent on file: Isaac Santiago Serrano. Added to active roster 2026-09-14 (new signup).",
+    "defaultGrade": "7th Grade",
+    "defaultShirt": "Adult Medium",
+    "default3x3PlayLab": "Yes",
+    "default3x3OneOnOne": "No",
+    "id": 63,
+    "birthday": "2014-06-16"
+  },
+  {
+    "student": "Yarrianna Cole",
+    "parent": "Samantha Mercado Cole",
+    "phone": "+1 904-536-7683",
+    "email": "smercadocole@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays. Second parent on file: Terry Cole. Added to active roster 2026-09-14 (new signup).",
+    "defaultGrade": "9th Grade",
+    "defaultShirt": "Large",
+    "id": 64,
+    "birthday": "2012-03-09"
+  }
+];
+
+// Per-transaction (per-receipt) billed/paid amounts attributed to each student, pulled from
+// Wix Receipts. This lets both the roster balance badge (all-time) and the Finance dashboard's
+// month/year selector compute totals for whatever period is selected, instead of one fixed snapshot.
+const STUDENT_TRANSACTIONS = {"3":[{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"},{"date":"2026-08-01","billed":480.0,"paid":480.0,"program":"3x3 Basketball"}],"34":[{"date":"2026-09-01","billed":27.48,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":36.64,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":87.94,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":87.94,"paid":0.0,"program":"RYLA"}],"30":[{"date":"2026-09-01","billed":240.0,"paid":0.0,"program":"3x3 Basketball"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"}],"32":[{"date":"2026-09-01","billed":240.0,"paid":0.0,"program":"3x3 Basketball"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"}],"24":[{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"},{"date":"2026-09-01","billed":250.0,"paid":250.0,"program":"Tutoring"},{"date":"2026-09-01","billed":-16.66,"paid":-16.66,"program":"Tutoring"},{"date":"2026-08-01","billed":400.0,"paid":400.0,"program":"Tutoring"}],"5":[{"date":"2026-09-01","billed":-16.67,"paid":-16.67,"program":"Tutoring"}],"8":[{"date":"2026-09-01","billed":-16.67,"paid":-16.67,"program":"Tutoring"}],"17":[{"date":"2026-09-01","billed":138.8,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":43.37,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":57.83,"paid":0.0,"program":"RYLA"},{"date":"2026-08-08","billed":240.0,"paid":240.0,"program":"RYLA"},{"date":"2026-08-08","billed":75.0,"paid":75.0,"program":"RYLA"},{"date":"2026-08-08","billed":100.0,"paid":100.0,"program":"RYLA"}],"54":[{"date":"2026-09-01","billed":121.69,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":67.61,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":50.7,"paid":0.0,"program":"RYLA"},{"date":"2026-08-20","billed":180.0,"paid":180.0,"program":"RYLA"},{"date":"2026-08-20","billed":100.0,"paid":100.0,"program":"RYLA"},{"date":"2026-08-20","billed":75.0,"paid":75.0,"program":"RYLA"}],"12":[{"date":"2026-09-01","billed":56.84,"paid":0.0,"program":null},{"date":"2026-09-01","billed":75.79,"paid":0.0,"program":null},{"date":"2026-09-01","billed":181.89,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":90.95,"paid":0.0,"program":"3x3 Basketball"},{"date":"2026-08-07","billed":75.0,"paid":75.0,"program":null},{"date":"2026-08-07","billed":100.0,"paid":100.0,"program":null},{"date":"2026-08-07","billed":240.0,"paid":240.0,"program":"RYLA"},{"date":"2026-08-07","billed":120.0,"paid":120.0,"program":"3x3 Basketball"}],"28":[{"date":"2026-09-01","billed":56.84,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":75.79,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":181.9,"paid":0.0,"program":"RYLA"},{"date":"2026-08-07","billed":75.0,"paid":75.0,"program":"RYLA"},{"date":"2026-08-07","billed":100.0,"paid":100.0,"program":"RYLA"},{"date":"2026-08-07","billed":240.0,"paid":240.0,"program":"RYLA"}],"0":[{"date":"2026-09-01","billed":181.89,"paid":0.0,"program":"3x3 Basketball"},{"date":"2026-09-01","billed":56.84,"paid":0.0,"program":null},{"date":"2026-09-01","billed":75.79,"paid":0.0,"program":null},{"date":"2026-09-01","billed":181.89,"paid":0.0,"program":"RYLA"},{"date":"2026-08-13","billed":15.0,"paid":15.0,"program":null},{"date":"2026-08-13","billed":20.0,"paid":20.0,"program":null},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"},{"date":"2026-08-01","billed":75.0,"paid":75.0,"program":null},{"date":"2026-08-01","billed":100.0,"paid":100.0,"program":null},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"RYLA"}],"44":[{"date":"2026-09-01","billed":56.84,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":75.79,"paid":0.0,"program":"RYLA"},{"date":"2026-09-01","billed":181.9,"paid":0.0,"program":"RYLA"},{"date":"2026-08-13","billed":15.0,"paid":15.0,"program":"RYLA"},{"date":"2026-08-13","billed":20.0,"paid":20.0,"program":"RYLA"},{"date":"2026-08-01","billed":75.0,"paid":75.0,"program":"RYLA"},{"date":"2026-08-01","billed":100.0,"paid":100.0,"program":"RYLA"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"RYLA"}],"45":[{"date":"2026-09-01","billed":56.84,"paid":0.0,"program":"Remnant Kids"},{"date":"2026-09-01","billed":75.79,"paid":0.0,"program":"Remnant Kids"},{"date":"2026-09-01","billed":181.89,"paid":0.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":60.0,"paid":60.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":15.0,"paid":15.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":20.0,"paid":20.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":75.0,"paid":75.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":100.0,"paid":100.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"Remnant Kids"}],"46":[{"date":"2026-09-01","billed":56.85,"paid":0.0,"program":"Remnant Kids"},{"date":"2026-09-01","billed":75.79,"paid":0.0,"program":"Remnant Kids"},{"date":"2026-09-01","billed":181.9,"paid":0.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":60.0,"paid":60.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":15.0,"paid":15.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":20.0,"paid":20.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":75.0,"paid":75.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":100.0,"paid":100.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"Remnant Kids"}],"22":[{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"},{"date":"2026-09-01","billed":-120.0,"paid":-120.0,"program":"3x3 Basketball"},{"date":"2026-08-05","billed":75.0,"paid":75.0,"program":"3x3 Basketball"},{"date":"2026-08-05","billed":240.0,"paid":240.0,"program":"3x3 Basketball"}],"15":[{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"3x3 Basketball"}],"51":[{"date":"2026-09-01","billed":450.0,"paid":0.0,"program":"Tutoring"},{"date":"2026-08-01","billed":300.0,"paid":275.0,"program":"Tutoring"}],"52":[{"date":"2026-09-01","billed":450.0,"paid":0.0,"program":"Tutoring"},{"date":"2026-08-01","billed":300.0,"paid":275.0,"program":"Tutoring"}],"53":[{"date":"2026-09-01","billed":180.0,"paid":0.0,"program":"Tutoring"},{"date":"2026-08-01","billed":120.0,"paid":110.0,"program":"Tutoring"}],"23":[{"date":"2026-09-01","billed":540.0,"paid":0.0,"program":"RYLA"},{"date":"2026-08-01","billed":655.0,"paid":0.0,"program":"RYLA"}],"42":[{"date":"2026-09-01","billed":540.0,"paid":0.0,"program":"RYLA"},{"date":"2026-08-01","billed":655.0,"paid":0.0,"program":"RYLA"}],"16":[{"date":"2026-09-01","billed":226.4,"paid":0.0,"program":"Tutoring"},{"date":"2026-08-05","billed":180.0,"paid":180.0,"program":"Tutoring"}],"19":[{"date":"2026-09-01","billed":377.33,"paid":0.0,"program":"Tutoring"},{"date":"2026-09-01","billed":125.78,"paid":0.0,"program":null},{"date":"2026-09-01","billed":301.86,"paid":0.0,"program":null},{"date":"2026-09-01","billed":94.33,"paid":0.0,"program":null},{"date":"2026-08-05","billed":300.0,"paid":300.0,"program":"Tutoring"},{"date":"2026-08-05","billed":100.0,"paid":100.0,"program":null},{"date":"2026-08-05","billed":240.0,"paid":240.0,"program":null},{"date":"2026-08-05","billed":75.0,"paid":75.0,"program":null}],"20":[{"date":"2026-09-01","billed":377.33,"paid":0.0,"program":"Tutoring"},{"date":"2026-09-01","billed":125.78,"paid":0.0,"program":null},{"date":"2026-09-01","billed":94.33,"paid":0.0,"program":null},{"date":"2026-09-01","billed":301.86,"paid":0.0,"program":null},{"date":"2026-08-05","billed":300.0,"paid":300.0,"program":"Tutoring"},{"date":"2026-08-05","billed":100.0,"paid":100.0,"program":null},{"date":"2026-08-05","billed":75.0,"paid":75.0,"program":null},{"date":"2026-08-05","billed":240.0,"paid":240.0,"program":null}],"40":[{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"Tutoring"},{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"Remnant Kids"},{"date":"2026-08-20","billed":100.0,"paid":100.0,"program":null},{"date":"2026-08-20","billed":75.0,"paid":75.0,"program":null},{"date":"2026-08-01","billed":120.0,"paid":120.0,"program":"Tutoring"},{"date":"2026-08-01","billed":120.0,"paid":120.0,"program":"Remnant Kids"}],"39":[{"date":"2026-09-01","billed":120.0,"paid":120.0,"program":"Tutoring"},{"date":"2026-09-01","billed":240.0,"paid":240.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":240.0,"paid":240.0,"program":"Remnant Kids"},{"date":"2026-08-01","billed":300.0,"paid":300.0,"program":"Tutoring"}],"41":[{"date":"2026-09-01","billed":955.0,"paid":0.0,"program":"Tutoring"},{"date":"2026-08-01","billed":600.0,"paid":600.0,"program":"Tutoring"}],"2":[{"date":"2026-09-01","billed":955.0,"paid":0.0,"program":"Tutoring"},{"date":"2026-08-01","billed":600.0,"paid":600.0,"program":"Tutoring"}],"57":[{"date":"2026-08-13","billed":60.0,"paid":60.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":15.0,"paid":15.0,"program":"Remnant Kids"},{"date":"2026-08-13","billed":20.0,"paid":20.0,"program":"Remnant Kids"}],"7":[{"date":"2026-08-04","billed":37.5,"paid":37.5,"program":"RYLA"},{"date":"2026-08-04","billed":50.0,"paid":50.0,"program":"RYLA"},{"date":"2026-08-04","billed":120.0,"paid":120.0,"program":"RYLA"}],"6":[{"date":"2026-08-04","billed":37.5,"paid":37.5,"program":"RYLA"},{"date":"2026-08-04","billed":50.0,"paid":50.0,"program":"RYLA"},{"date":"2026-08-04","billed":120.0,"paid":120.0,"program":"RYLA"}],"58":[{"date":"2026-09-01","billed":415.0,"paid":0.0,"program":"RYLA"}]};
+
+const FINANCE_LAST_UPDATED = "2026-08-28T11:11:59.989Z";
+
+function round2(n){ return Math.round(n * 100) / 100; }
+
+// The most recent billing month present in the data (currently September) — the one still
+// open/being collected. Computed from the data itself so it advances automatically each time
+// STUDENT_TRANSACTIONS is rebuilt for a new month, instead of needing to be hand-edited.
+const CURRENT_BILLING_MONTH = (() => {
+  let max = null;
+  Object.values(STUDENT_TRANSACTIONS).forEach(txns => txns.forEach(t => {
+    const m = t.date.slice(0, 7);
+    if(!max || m > max) max = m;
+  }));
+  return max;
+})();
+
+// monthKey: "YYYY-MM" to scope to one month, or null/"ALL" for all-time.
+// program (optional): scope to one program's transactions only. Transactions tagged with a
+// "program" only count toward that program; untagged transactions (all older data, before a
+// student could have per-program invoices) count toward every program that student is in, same
+// as before — so this stays backward-compatible for every student except newly multi-program ones.
+function computeFinance(id, monthKey, program){
+  const txns = STUDENT_TRANSACTIONS[String(id)] || [];
+  if(txns.length === 0) return {billed:0, paid:0, owed:0, none:true};
+  let filtered = (monthKey == null || monthKey === "ALL") ? txns : txns.filter(t => t.date.slice(0,7) === monthKey);
+  if(program){
+    filtered = filtered.filter(t => !t.program || t.program === program);
+  }
+  const billed = round2(filtered.reduce((s,t)=>s+t.billed,0));
+  // If this student's payment status has been manually set to "Paid" on the Roster tab, treat
+  // them as fully paid — but only for the current open billing month (the most recent month
+  // present in the data, e.g. September). Already-closed months (e.g. August) keep their real
+  // Wix-derived paid/owed figures untouched, so marking someone Paid today doesn't silently
+  // rewrite last month's settled numbers.
+  const manualStatus = edits[id] && edits[id].paymentStatus;
+  const paid = round2(filtered.reduce((s,t)=>{
+    const isCurrentMonth = t.date.slice(0,7) === CURRENT_BILLING_MONTH;
+    return s + (manualStatus === "Paid" && isCurrentMonth ? t.billed : t.paid);
+  }, 0));
+  return {billed, paid, owed: round2(billed-paid), none:false};
+}
+// Roster tab always shows the all-time outstanding balance, regardless of the Finance tab's month selector.
+function getFinance(id){
+  return computeFinance(id, null);
+}
+function formatLastUpdated(iso){
+  const d = new Date(iso);
+  return d.toLocaleString("en-US", {month:"short", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit"});
+}
+document.getElementById("lastUpdated").textContent = "Finance data last updated: " + formatLastUpdated(FINANCE_LAST_UPDATED);
+
+const STORAGE_KEY = "remnant_youth_roster_edits_v1";
+function loadEdits(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveEdits(edits){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(edits)); }catch(e){}
+}
+// edits starts from the local cache so the app paints instantly; syncCloud() below takes over
+// as the source of truth as soon as Firebase is ready (usually well under a second).
+let edits = loadEdits();
+
+// ---- Cloud sync (Firebase) ----------------------------------------------------------------
+// Edits (Active/Notes/Grade/Shirt Size/3x3 sub-programs) are stored in one shared Firestore
+// document so every device sees the same data live, instead of each phone keeping its own
+// separate localStorage copy. localStorage is still used as an instant-paint + offline cache.
+const firebaseConfig = {
+  apiKey: "AIzaSyDiJTVx6IDMlLwIcWCx8ezwrbV6S42JAxk",
+  authDomain: "remnant-youth-roster.firebaseapp.com",
+  projectId: "remnant-youth-roster",
+  storageBucket: "remnant-youth-roster.firebasestorage.app",
+  messagingSenderId: "949830930288",
+  appId: "1:949830930288:web:859b102116ee3f904249b5"
+};
+let cloudDocRef = null;
+let cloudReady = false;
+let pendingCloudWrites = []; // queued {id,field,value} edits made before the cloud connection was ready
+let applyingRemoteSnapshot = false;
+
+function pushCloudWrite(id, field, value){
+  if(!cloudReady || !cloudDocRef){
+    pendingCloudWrites.push({id, field, value});
+    return;
+  }
+  cloudDocRef.update({ [`${id}.${field}`]: value }).catch(err=>{
+    console.error("Cloud sync write failed:", err);
+  });
+}
+
+// Merge this device's local edits with whatever's already in the cloud. Per student+field,
+// the cloud value wins if both sides have it (so we don't stomp a newer edit made on another
+// device); a field only present locally (e.g. edits made while sync was broken, or made before
+// this device ever successfully connected) gets carried up instead of being silently dropped.
+function mergeEdits(local, cloud){
+  const merged = {};
+  const ids = new Set([...Object.keys(local || {}), ...Object.keys(cloud || {})]);
+  ids.forEach(id=>{
+    merged[id] = Object.assign({}, (local || {})[id] || {}, (cloud || {})[id] || {});
+  });
+  return merged;
+}
+
+function initCloudSync(){
+  try{
+    const app = firebase.initializeApp(firebaseConfig);
+    firebase.auth().signInAnonymously().catch(err=>{
+      console.error("Anonymous sign-in failed, edits will stay local-only on this device:", err);
+    });
+    firebase.auth().onAuthStateChanged(user=>{
+      if(!user) return;
+      cloudDocRef = firebase.firestore().collection("remnant_roster").doc("edits");
+      // One-time reconcile on connect: merge this device's local edits into whatever's already
+      // in the cloud BEFORE attaching the live listener, so a first-ever successful connection
+      // (or reconnecting after sync was broken) can't wipe out edits that only exist locally.
+      cloudDocRef.get().then(snap=>{
+        const cloudData = snap.exists ? (snap.data() || {}) : {};
+        const merged = mergeEdits(edits, cloudData);
+        edits = merged;
+        saveEdits(edits);
+        render();
+        return cloudDocRef.set(merged, {merge:true});
+      }).then(()=>{
+        cloudReady = true;
+        // Flush any edits the user made in the brief window before the cloud connection was ready.
+        pendingCloudWrites.forEach(w=> pushCloudWrite(w.id, w.field, w.value));
+        pendingCloudWrites = [];
+        cloudDocRef.onSnapshot(snap=>{
+          if(!snap.exists) return;
+          applyingRemoteSnapshot = true;
+          edits = snap.data() || {};
+          saveEdits(edits); // keep the offline cache current too
+          render();
+          applyingRemoteSnapshot = false;
+        }, err=>{
+          console.error("Cloud sync listener error:", err);
+        });
+      }).catch(err=>{
+        console.error("Could not reach cloud sync, edits will stay local-only on this device:", err);
+      });
+    });
+  }catch(err){
+    console.error("Cloud sync unavailable, edits will stay local-only on this device:", err);
+  }
+}
+let flippedStudentId = null; // only one student card flipped open at a time
+let notesEditing = {}; // id -> true/false, whether the notes textarea is showing for that student
+
+function escapeHtml(s){
+  return String(s || "").replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+let state = { filter:"All", search:"", sortKey:"student", sortDir:1 };
+
+function programBadgeClass(p){ return "badge-" + p.replace(/[^a-zA-Z0-9]+/g,'-'); }
+
+// Used to sort every roster view by last name so siblings land next to each other, regardless
+// of which filter tab you're on. Strips a trailing "(...)" disambiguator and common suffixes
+// (Jr, Sr, II, III, IV) before taking the final word as the last name.
+const NAME_SUFFIXES = new Set(["jr","jr.","sr","sr.","ii","iii","iv"]);
+function getLastName(fullName){
+  const stripped = (fullName || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const parts = stripped.split(/\s+/).filter(Boolean);
+  while(parts.length > 1 && NAME_SUFFIXES.has(parts[parts.length - 1].toLowerCase())) parts.pop();
+  return parts.length ? parts[parts.length - 1] : stripped;
+}
+
+function findRosterItem(id){
+  return ROSTER.find(r => String(r.id) === String(id)) || {};
+}
+const ACADEMIC_PROGRAMS = ["RYLA","Remnant Kids","3x3 Basketball"];
+const GRADE_OPTIONS = ["Kindergarden","1st Grade","2nd Grade","3rd Grade","4th Grade","5th Grade","6th Grade","7th Grade","8th Grade","9th Grade","10th Grade","11th Grade","12th Grade"];
+
+function getRow(idOrItem){
+  const id = (idOrItem && typeof idOrItem === "object") ? idOrItem.id : idOrItem;
+  const rosterItem = findRosterItem(id);
+  const e = edits[id] || {};
+  return {
+    notes: e.notes !== undefined ? e.notes : "",
+    active: e.active !== undefined ? e.active : (rosterItem.defaultActive || "Yes"),
+    gradeLevel: e.gradeLevel !== undefined ? e.gradeLevel : (rosterItem.defaultGrade || ""),
+    shirtSize: e.shirtSize !== undefined ? e.shirtSize : (rosterItem.defaultShirt || ""),
+    playLab: e.playLab || rosterItem.default3x3PlayLab || "Yes",
+    oneOnOne: e.oneOnOne || rosterItem.default3x3OneOnOne || "No"
+  };
+}
+function updateEdit(id, field, value){
+  if(!edits[id]) edits[id] = {};
+  edits[id][field] = value;
+  saveEdits(edits);
+  pushCloudWrite(id, field, value);
+}
+// Payment status: manually settable via the 3-segment slider on the front of each card
+// (Needs Invoice / Invoice Sent / Paid), stored as an edit so it syncs across devices like
+// everything else. Falls back to the old Wix-invoice-derived guess only until someone sets
+// it by hand for that student.
+const STATUS_CYCLE = ["Needs invoice", "Invoice sent", "Paid"];
+const STATUS_CLASS = {"Needs invoice":"status-needs", "Invoice sent":"status-invoiced", "Paid":"status-paid"};
+function statusInfo(id){
+  const e = edits[id] || {};
+  if(e.paymentStatus && STATUS_CLASS[e.paymentStatus]){
+    return {text:e.paymentStatus, cls:STATUS_CLASS[e.paymentStatus]};
+  }
+  const fin = getFinance(id);
+  if(fin.none) return {text:"Needs invoice", cls:"status-needs"};
+  if(fin.owed <= 0) return {text:"Paid", cls:"status-paid"};
+  return {text:"Invoice sent", cls:"status-invoiced"};
+}
+
+function matchesFilter(item){ return state.filter === "All" ? true : item.programs.includes(state.filter); }
+function matchesSearch(item){
+  if(!state.search) return true;
+  const s = state.search.toLowerCase();
+  return item.student.toLowerCase().includes(s) || item.parent.toLowerCase().includes(s) || item.email.toLowerCase().includes(s);
+}
+function sortedFiltered(){
+  let list = ROSTER.filter(matchesFilter).filter(matchesSearch);
+  const key = state.sortKey;
+  list.sort((a,b)=>{
+    const aInactive = getRow(a).active === "No" ? 1 : 0;
+    const bInactive = getRow(b).active === "No" ? 1 : 0;
+    if(aInactive !== bInactive) return aInactive - bInactive;
+    let av, bv;
+    if(key === "student"){
+      // Sort by last name (not first) so siblings land next to each other on every tab.
+      av = getLastName(a.student).toLowerCase();
+      bv = getLastName(b.student).toLowerCase();
+    } else {
+      av = (a[key]||"").toString().toLowerCase();
+      bv = (b[key]||"").toString().toLowerCase();
+    }
+    if(av < bv) return -1*state.sortDir;
+    if(av > bv) return 1*state.sortDir;
+    // tiebreak (e.g. siblings sharing a last name) by full name so ordering stays stable
+    const af = a.student.toLowerCase(), bf = b.student.toLowerCase();
+    if(af < bf) return -1*state.sortDir;
+    if(af > bf) return 1*state.sortDir;
+    return 0;
+  });
+  return list;
+}
+function updateCounts(){
+  const cats = ["All","RYLA","Remnant Kids","3x3 Basketball","Tutoring","Other"];
+  cats.forEach(c=>{
+    const items = c === "All" ? ROSTER : ROSTER.filter(item=>item.programs.includes(c));
+    const total = items.length;
+    const active = items.filter(item => getRow(item).active !== "No").length;
+    document.getElementById("n-"+c).innerHTML = `<span class="chip-active-num">${active}</span>/${total}`;
+  });
+  const activeCount = ROSTER.filter(item => getRow(item).active !== "No").length;
+  document.getElementById("activeCount").textContent = activeCount;
+  document.getElementById("totalCount").textContent = ROSTER.length;
+}
+
+// Which weeknight/day each core program meets, so the birthday banner can suggest when to celebrate.
+const CLASS_DAY = { "Remnant Kids": "Wednesday", "3x3 Basketball": "Thursday", "RYLA": "Friday" };
+
+function daysUntilNextBirthday(birthdayStr, today){
+  const [, m, d] = birthdayStr.split("-").map(Number); // "YYYY-MM-DD" -> use month/day only
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let next = new Date(todayMidnight.getFullYear(), m - 1, d);
+  if(next < todayMidnight) next = new Date(todayMidnight.getFullYear() + 1, m - 1, d);
+  return Math.round((next - todayMidnight) / 86400000);
+}
+
+function renderBirthdayBanner(){
+  const banner = document.getElementById("birthdayBanner");
+  const list = document.getElementById("birthdayList");
+  if(!banner || !list) return;
+  const today = new Date(); // the device's real clock — this is how the app "knows what day it is"
+  const upcoming = ROSTER
+    .filter(item => item.birthday && getRow(item).active !== "No")
+    .map(item => ({ item, days: daysUntilNextBirthday(item.birthday, today) }))
+    .filter(x => x.days >= 0 && x.days <= 2)
+    .sort((a, b) => a.days - b.days);
+
+  if(!upcoming.length){
+    banner.classList.add("hidden");
+    list.innerHTML = "";
+    return;
+  }
+  banner.classList.remove("hidden");
+  list.innerHTML = upcoming.map(({item, days})=>{
+    const when = days === 0 ? "today! 🎂" : days === 1 ? "tomorrow" : `in ${days} days`;
+    const classDays = item.programs.map(p => CLASS_DAY[p]).filter(Boolean);
+    const uniqueClassDays = [...new Set(classDays)];
+    const celebrateHint = uniqueClassDays.length
+      ? `Celebrate at ${item.programs.filter(p=>CLASS_DAY[p]).join(" / ")} (${uniqueClassDays.join(" / ")})`
+      : "";
+    return `
+      <div class="bb-row">
+        <span class="bb-emoji">🎂</span>
+        <span class="bb-text"><strong>${item.student}</strong>'s birthday is ${when}${celebrateHint ? `<span class="bb-sub">${celebrateHint}</span>` : ""}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function render(){
+  const list = sortedFiltered();
+  const container = document.getElementById("list");
+  container.innerHTML = "";
+  document.getElementById("emptyState").style.display = list.length ? "none" : "block";
+
+  list.forEach(item=>{
+    const row = getRow(item);
+    const isFlipped = String(item.id) === String(flippedStudentId);
+    const payClass = item.payment === "STEP UP" ? "pay-STEP" : "pay-Self";
+    const badges = item.programs.map(p=>`<span class="badge ${programBadgeClass(p)}">${p}</span>`).join("");
+    const digits = item.phone.replace(/[^0-9+]/g,'');
+    const telHref = "tel:" + digits;
+    const smsHref = "sms:" + digits;
+    const fin = getFinance(item.id);
+    const owedCls = fin.owed > 0 ? "owed-due" : "owed-zero";
+    const owedText = money(fin.owed);
+    const showAcademic = item.programs.some(p => ACADEMIC_PROGRAMS.includes(p));
+    const is3x3 = item.programs.includes("3x3 Basketball");
+    const isEditingNotes = notesEditing[item.id] !== undefined ? notesEditing[item.id] : (row.notes === "");
+
+    const birthdayRow = item.birthday ? `
+      <div class="info-row">
+        <span class="info-label">Birthday</span>
+        <span class="info-static">${formatBirthday(item.birthday)}</span>
+      </div>
+    ` : "";
+
+    const academicRows = showAcademic ? `
+      <div class="info-row">
+        <span class="info-label">Grade Level</span>
+        <select class="info-select" data-id="${item.id}" data-field="gradeLevel">
+          <option value="" ${!row.gradeLevel ? "selected" : ""}>—</option>
+          ${GRADE_OPTIONS.map(g=>`<option value="${g}" ${row.gradeLevel===g ? "selected" : ""}>${g}</option>`).join("")}
+        </select>
+      </div>
+      <div class="info-row">
+        <span class="info-label">T-Shirt Size</span>
+        <input type="text" class="info-input" data-id="${item.id}" data-field="shirtSize" placeholder="e.g. Youth Medium" value="${row.shirtSize}">
+      </div>
+    ` : "";
+
+    // "Other programs" = every program this student is in besides the one currently being
+    // viewed (the active filter chip). Under the "All" filter, that's everything after the
+    // first program, since the front of the card already leads with the full badge list.
+    const otherPrograms = state.filter === "All"
+      ? item.programs.slice(1)
+      : item.programs.filter(p => p !== state.filter);
+    const otherProgramsRow = otherPrograms.length ? `
+      <div class="field">
+        <label>Also enrolled in</label>
+        <div class="badges">${otherPrograms.map(p=>`<span class="badge ${programBadgeClass(p)}">${p}</span>`).join("")}</div>
+      </div>
+    ` : "";
+
+    const subProgramRow = is3x3 ? `
+      <div class="info-row">
+        <span class="info-label">3x3 Sub-Program</span>
+        <div class="subprog-toggles">
+          <button type="button" class="subprog-chip ${row.playLab==='Yes' ? 'active' : ''}" data-id="${item.id}" data-sub="playLab">Play Lab</button>
+          <button type="button" class="subprog-chip ${row.oneOnOne==='Yes' ? 'active' : ''}" data-id="${item.id}" data-sub="oneOnOne">1-on-1</button>
+        </div>
+      </div>
+    ` : "";
+
+    const sizeCls = is3x3 ? " card-taller" : (showAcademic ? " card-tall" : "");
+    const card = document.createElement("div");
+    card.className = "card" + sizeCls + (isFlipped ? " flipped" : "") + (row.active === "No" ? " inactive" : "");
+    card.innerHTML = `
+      <div class="stu-flip-inner">
+        <div class="stu-face stu-front">
+          <div class="card-top">
+            <div>
+              <p class="student-name">${item.student} <span class="pay-badge ${payClass}">${item.payment}</span></p>
+              <p class="parent-name">${item.parent}</p>
+            </div>
+            <div class="active-toggle">
+              <span class="active-label">Active</span>
+              <label class="ios-switch">
+                <input type="checkbox" data-id="${item.id}" data-field="active" ${row.active === "Yes" ? "checked" : ""}>
+                <span class="ios-switch-track"></span>
+              </label>
+            </div>
+          </div>
+          <div class="badges">${badges}</div>
+          <div class="owed-row"><span class="owed-label">Balance</span><span class="owed-amt ${owedCls}">${owedText}</span></div>
+          ${birthdayRow}
+          ${academicRows}
+          ${subProgramRow}
+          <div class="contact-row">
+            <a class="contact-btn" href="${telHref}"><span class="ic">📞</span> Call</a>
+            <a class="contact-btn" href="${smsHref}"><span class="ic">💬</span> Text</a>
+            <a class="contact-btn" href="mailto:${item.email}"><span class="ic">✉️</span> Email</a>
+          </div>
+          <div class="status-slider">
+            ${STATUS_CYCLE.map(s => `<button type="button" class="status-seg ${STATUS_CLASS[s]} ${statusInfo(item.id).text===s ? 'active' : ''}" data-status-id="${item.id}" data-status-value="${s}">${s}</button>`).join("")}
+          </div>
+          <button type="button" class="toggle-summary" data-toggle="${item.id}">
+            <span class="hint">Notes <span class="chev">▾</span></span>
+          </button>
+        </div>
+        <div class="stu-face stu-back">
+          <div class="stu-back-header">${item.student}</div>
+          ${otherProgramsRow}
+          <div class="field">
+            <label>Notes</label>
+            ${isEditingNotes ? `
+              <textarea data-id="${item.id}" data-field="notes" placeholder="notes...">${row.notes}</textarea>
+              <button type="button" class="notes-save-btn" data-id="${item.id}">Save</button>
+            ` : `
+              <div class="notes-display">${row.notes ? escapeHtml(row.notes) : '<span class="notes-empty">No notes yet</span>'}</div>
+              <button type="button" class="notes-edit-btn" data-id="${item.id}">Edit</button>
+            `}
+          </div>
+          <div class="detail-note">Use the slider on the front to mark Needs Invoice / Invoice Sent / Paid. Original enrollment: ${item.detail}</div>
+          <button class="toggle-summary back-flip-bar" data-toggle="${item.id}">
+            <span class="hint">← Tap to flip back</span>
+          </button>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll('input[data-field="active"]').forEach(el=>{
+    el.addEventListener("change", (e)=>{
+      const id = e.target.getAttribute("data-id");
+      const val = e.target.checked ? "Yes" : "No";
+      updateEdit(id, "active", val);
+      // brief delay so the switch animation is visible before the card jumps to the bottom
+      setTimeout(render, 220);
+    });
+  });
+
+  container.querySelectorAll('[data-toggle]').forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const id = btn.getAttribute("data-toggle");
+      const card = btn.closest(".card");
+      const wasFlipped = card.classList.contains("flipped");
+      // only one card open at a time
+      container.querySelectorAll(".card.flipped").forEach(c=>c.classList.remove("flipped"));
+      if(wasFlipped){
+        flippedStudentId = null;
+      } else {
+        card.classList.add("flipped");
+        flippedStudentId = id;
+      }
+    });
+  });
+
+  container.querySelectorAll('[data-status-id]').forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation(); // don't also trigger the card flip
+      const id = btn.getAttribute("data-status-id");
+      const value = btn.getAttribute("data-status-value");
+      updateEdit(id, "paymentStatus", value);
+      render();
+    });
+  });
+
+  container.querySelectorAll('textarea').forEach(el=>{
+    el.addEventListener("click", (e)=> e.stopPropagation());
+  });
+
+  container.querySelectorAll('.notes-edit-btn').forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const id = btn.getAttribute("data-id");
+      notesEditing[id] = true;
+      render();
+    });
+  });
+
+  container.querySelectorAll('.notes-save-btn').forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const id = btn.getAttribute("data-id");
+      const card = btn.closest(".card");
+      const textarea = card.querySelector('textarea[data-field="notes"]');
+      updateEdit(id, "notes", textarea.value);
+      notesEditing[id] = false;
+      render();
+    });
+  });
+
+  container.querySelectorAll('.info-select, .info-input').forEach(el=>{
+    el.addEventListener("click", (e)=> e.stopPropagation());
+    el.addEventListener("change", (e)=>{
+      const id = e.target.getAttribute("data-id");
+      const field = e.target.getAttribute("data-field");
+      updateEdit(id, field, e.target.value);
+    });
+  });
+
+  container.querySelectorAll('.subprog-chip').forEach(chip=>{
+    chip.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const id = chip.getAttribute("data-id");
+      const field = chip.getAttribute("data-sub");
+      const nowActive = !chip.classList.contains("active");
+      updateEdit(id, field, nowActive ? "Yes" : "No");
+      chip.classList.toggle("active", nowActive);
+    });
+  });
+
+  updateCounts();
+  renderBirthdayBanner();
+}
+
+document.getElementById("refreshBtn").addEventListener("click", ()=>{
+  location.reload();
+});
+
+document.querySelectorAll(".chip").forEach(chip=>{
+  chip.addEventListener("click", ()=>{
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+    chip.classList.add("active");
+    state.filter = chip.getAttribute("data-filter");
+    render();
+  });
+});
+
+document.getElementById("search").addEventListener("input", (e)=>{
+  state.search = e.target.value;
+  render();
+});
+
+const sortToggle = document.getElementById("sortToggle");
+const sortPanel = document.getElementById("sortPanel");
+sortToggle.addEventListener("click", ()=>{
+  sortPanel.classList.toggle("open");
+});
+sortPanel.querySelectorAll(".sort-opt").forEach(opt=>{
+  opt.addEventListener("click", ()=>{
+    const key = opt.getAttribute("data-sort");
+    if(key === "dir"){
+      state.sortDir *= -1;
+    } else {
+      state.sortKey = key;
+      sortPanel.querySelectorAll(".sort-opt[data-sort]").forEach(o=>o.classList.remove("active"));
+      opt.classList.add("active");
+    }
+    render();
+  });
+});
+
+const RECENT_ACTIVITY = [{"date":"2026-08-25","name":"Selena Khedekar","amount":480.0},{"date":"2026-08-25","name":"Liannie Rodriguez","amount":240.0},{"date":"2026-08-25","name":"Yalitza Soto","amount":440.0},{"date":"2026-08-25","name":"Isaac Zechmann","amount":120.0},{"date":"2026-08-25","name":"Sarah Fenton","amount":360.0},{"date":"2026-08-24","name":"Amy Williams","amount":240.0},{"date":"2026-08-21","name":"Lindsey Hayes","amount":355.0},{"date":"2026-08-21","name":"Tori Schurdell","amount":60.0},{"date":"2026-08-19","name":"Tiffany Barfield","amount":355.0},{"date":"2026-08-19","name":"Selena Khedekar","amount":175.0},{"date":"2026-08-19","name":"Amy Williams","amount":480.0},{"date":"2026-08-12","name":"Carly Justo","amount":950.0},{"date":"2026-08-07","name":"Tiffany Barfield","amount":480.0},{"date":"2026-08-07","name":"Sarah Fenton","amount":540.0},{"date":"2026-08-07","name":"Tori Schurdell","amount":600.0},{"date":"2026-08-06","name":"Tiffany Barfield","amount":175.0},{"date":"2026-08-06","name":"Leanne Martin","amount":415.0},{"date":"2026-08-06","name":"Isaac Zechmann","amount":75.0},{"date":"2026-08-03","name":"Liannie Rodriguez","amount":240.0},{"date":"2026-08-03","name":"Katina Clark","amount":415.0},{"date":"2026-08-03","name":"Gabriela Cruz","amount":1610.0},{"date":"2026-08-03","name":"Isaac Zechmann","amount":240.0},{"date":"2026-08-03","name":"Nicole Rodriguez","amount":790.0},{"date":"2026-07-31","name":"Nicole Rodriguez","amount":410.0},{"date":"2026-07-29","name":"Yalitza Soto","amount":400.0},{"date":"2026-07-24","name":"Angey Rogers","amount":240.0},{"date":"2026-07-24","name":"Katherine Ramirez","amount":240.0}];
+
+function money(n){ return "$" + n.toFixed(2); }
+function monthKey(dateStr){ return dateStr.slice(0,7); } // "YYYY-MM"
+function monthLabel(key){
+  const [y,m] = key.split("-").map(Number);
+  return new Date(y, m-1, 1).toLocaleString("en-US", {month:"long", year:"numeric"});
+}
+function formatBirthday(dateStr){
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m-1, d).toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+}
+
+let flippedProgram = null; // only one program card flipped open at a time
+let openMonths = null; // lazily initialized to the most recent month (All Time view only)
+let financeMonth = null; // "YYYY-MM" or "ALL" — the period selected on the Finance tab
+
+function getFinanceMonthKeys(){
+  const keys = new Set();
+  Object.values(STUDENT_TRANSACTIONS).forEach(txns=>{
+    txns.forEach(t=>keys.add(t.date.slice(0,7)));
+  });
+  keys.add(new Date().toISOString().slice(0,7)); // always include the real current month, even before any activity posts
+  return Array.from(keys).sort().reverse();
+}
+
+function populateFinanceMonthSelect(){
+  const sel = document.getElementById("financeMonthSelect");
+  const keys = getFinanceMonthKeys();
+  if(financeMonth === null){
+    financeMonth = new Date().toISOString().slice(0,7); // default to the current month
+  }
+  sel.innerHTML = keys.map(k=>`<option value="${k}"${k===financeMonth?' selected':''}>${monthLabel(k)}</option>`).join("")
+    + `<option value="ALL"${financeMonth==="ALL"?' selected':''}>All Time</option>`;
+}
+document.getElementById("financeMonthSelect").addEventListener("change", (e)=>{
+  financeMonth = e.target.value;
+  flippedProgram = null; // underlying numbers just changed — close any open card so it doesn't show stale data
+  renderFinance();
+});
+
+function renderFinance(){
+  populateFinanceMonthSelect();
+  const isAllTime = financeMonth === "ALL";
+  const withFin = ROSTER.filter(item => !computeFinance(item.id, financeMonth).none);
+
+  let totalBilled = 0, totalPaid = 0, totalOwed = 0;
+  withFin.forEach(item=>{
+    const f = computeFinance(item.id, financeMonth);
+    totalBilled += f.billed; totalPaid += f.paid; totalOwed += f.owed;
+  });
+
+  document.getElementById("finBilled").textContent = money(totalBilled);
+  document.getElementById("finPaid").textContent = money(totalPaid);
+  document.getElementById("finOwed").textContent = money(totalOwed);
+
+  // By program — flip cards
+  const progs = ["RYLA","Remnant Kids","3x3 Basketball","Tutoring","Other"];
+  const progHtml = progs.map(p=>{
+    const items = withFin.filter(i=>i.programs.includes(p));
+    if(!items.length) return "";
+    let billed=0, paid=0, owed=0;
+    const famMap = {};
+    items.forEach(i=>{
+      const f = computeFinance(i.id, financeMonth, p);
+      billed += f.billed; paid += f.paid; owed += f.owed;
+      if(f.owed > 0){
+        if(!famMap[i.parent]) famMap[i.parent] = {billed:0, owed:0};
+        famMap[i.parent].billed += f.billed;
+        famMap[i.parent].owed += f.owed;
+      }
+    });
+    const owingFamilies = Object.keys(famMap).map(name=>({name, ...famMap[name]})).sort((a,b)=>b.owed-a.owed);
+    const detailed = owingFamilies.length <= 4;
+    const backRows = owingFamilies.length ? owingFamilies.map(f=>`
+      <div class="prog-owed-row">
+        <span class="pw-name">${f.name}</span>
+        <span class="pw-nums">${detailed ? `<span class="pw-billed">${money(f.billed)} billed</span>` : ""}<span class="pw-owed">${money(f.owed)}</span></span>
+      </div>
+    `).join("") : `<div class="prog-owed-empty">Nobody owes a balance in ${p} 🎉</div>`;
+
+    const drawerCls = "prog-drawer-" + programBadgeClass(p).replace("badge-", "");
+    return `
+      <div class="prog-flip${p === flippedProgram ? ' flipped' : ''}" data-prog="${p}">
+        <div class="prog-flip-inner">
+          <div class="prog-face prog-front">
+            <div class="prog-title ${drawerCls}">${p}</div>
+            <div class="prog-face-body">
+              <div class="prog-stats-grid">
+                <div class="prog-stat"><span class="ps-label">Billed</span><span class="ps-value">${money(billed)}</span></div>
+                <div class="prog-stat ps-paid"><span class="ps-label">Paid</span><span class="ps-value">${money(paid)}</span></div>
+                <div class="prog-stat ps-owed"><span class="ps-label">Owed</span><span class="ps-value">${money(owed)}</span></div>
+                <div class="prog-stat"><span class="ps-label">Families w/ Balance</span><span class="ps-value">${owingFamilies.length}</span></div>
+              </div>
+              <div class="prog-tap-hint">Tap to see who owes →</div>
+            </div>
+          </div>
+          <div class="prog-face prog-back">
+            <div class="prog-title ${drawerCls}">${p} — Balances Due</div>
+            <div class="prog-face-body">
+              <div class="prog-owed-list">${backRows}</div>
+              <div class="prog-tap-hint">← Tap to flip back</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+  document.getElementById("finPrograms").innerHTML = progHtml || `<div class="fin-empty">No program data yet.</div>`;
+  document.querySelectorAll(".prog-flip").forEach(card=>{
+    card.addEventListener("click", ()=>{
+      const p = card.getAttribute("data-prog");
+      const wasFlipped = card.classList.contains("flipped");
+      // only one program card open at a time
+      document.querySelectorAll(".prog-flip.flipped").forEach(c=>c.classList.remove("flipped"));
+      if(wasFlipped){
+        flippedProgram = null;
+      } else {
+        card.classList.add("flipped");
+        flippedProgram = p;
+      }
+    });
+  });
+
+  // Families ranked by amount owed
+  const famMap = {};
+  withFin.forEach(item=>{
+    const f = computeFinance(item.id, financeMonth);
+    if(f.owed <= 0) return;
+    if(!famMap[item.parent]) famMap[item.parent] = {owed:0, students:[]};
+    famMap[item.parent].owed += f.owed;
+    famMap[item.parent].students.push(item.student + " (" + money(f.owed) + ")");
+  });
+  const famList = Object.keys(famMap).map(name=>({name, ...famMap[name]})).sort((a,b)=>b.owed-a.owed);
+  document.getElementById("finFamCount").textContent = famList.length;
+  document.getElementById("finFamilies").innerHTML = famList.length ? famList.map(f=>`
+    <div class="fin-fam-row">
+      <div class="fin-fam-top"><span class="fin-fam-name">${f.name}</span><span class="fin-fam-owed">${money(f.owed)}</span></div>
+      <div class="fin-fam-students">${f.students.join(" · ")}</div>
+    </div>
+  `).join("") : `<div class="fin-empty">Nobody owes a balance right now 🎉</div>`;
+
+  // Recent activity — flat list for a specific month; grouped-by-month/collapsible when "All Time" is selected
+  if(isAllTime){
+    const byMonth = {};
+    RECENT_ACTIVITY.forEach(a=>{
+      const k = monthKey(a.date);
+      if(!byMonth[k]) byMonth[k] = [];
+      byMonth[k].push(a);
+    });
+    const monthKeys = Object.keys(byMonth).sort().reverse();
+    if(openMonths === null){
+      openMonths = new Set(monthKeys.length ? [monthKeys[0]] : []);
+    }
+    document.getElementById("finActivity").innerHTML = monthKeys.map(k=>{
+      const entries = byMonth[k];
+      const total = entries.reduce((s,a)=>s+a.amount,0);
+      const rows = entries.map(a=>`
+        <div class="fin-prog-row"><span class="fp-name">${a.name}</span><span class="fp-nums">${a.date} · ${money(a.amount)} paid</span></div>
+      `).join("");
+      return `
+        <div class="activity-month${openMonths.has(k) ? ' open' : ''}" data-month="${k}">
+          <div class="activity-month-header"><span>${monthLabel(k)} <span class="am-total">· ${money(total)}</span></span><span class="am-chev">▾</span></div>
+          <div class="activity-entries">${rows}</div>
+        </div>
+      `;
+    }).join("");
+    document.querySelectorAll(".activity-month-header").forEach(header=>{
+      header.addEventListener("click", ()=>{
+        const section = header.closest(".activity-month");
+        const k = section.getAttribute("data-month");
+        section.classList.toggle("open");
+        if(section.classList.contains("open")) openMonths.add(k);
+        else openMonths.delete(k);
+      });
+    });
+  } else {
+    const entries = RECENT_ACTIVITY.filter(a => monthKey(a.date) === financeMonth).sort((a,b)=> a.date < b.date ? 1 : -1);
+    document.getElementById("finActivity").innerHTML = entries.length ? entries.map(a=>`
+      <div class="fin-prog-row"><span class="fp-name">${a.name}</span><span class="fp-nums">${a.date} · ${money(a.amount)} paid</span></div>
+    `).join("") : `<div class="fin-empty">No payment activity in ${monthLabel(financeMonth)}.</div>`;
+  }
+}
+
+document.getElementById("btnRosterView").addEventListener("click", ()=>{
+  document.getElementById("btnRosterView").classList.add("active");
+  document.getElementById("btnFinanceView").classList.remove("active");
+  document.getElementById("rosterView").classList.remove("hidden");
+  document.getElementById("financeView").classList.remove("open");
+});
+document.getElementById("btnFinanceView").addEventListener("click", ()=>{
+  document.getElementById("btnFinanceView").classList.add("active");
+  document.getElementById("btnRosterView").classList.remove("active");
+  document.getElementById("rosterView").classList.add("hidden");
+  document.getElementById("financeView").classList.add("open");
+  renderFinance();
+});
+
+render(); // instant first paint from the local cache
+initCloudSync(); // then take over live from Firebase — re-renders automatically once connected
+</script>
+</body>
+</html>
