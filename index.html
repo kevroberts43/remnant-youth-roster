@@ -246,10 +246,13 @@
     flex-direction:column;
     align-items:center;
     gap:3px;
+    max-width:100px;
   }
   .active-toggle .active-label{
     font-size:10px;
     font-weight:bold;
+    text-align:center;
+    line-height:1.25;
     color:var(--muted);
     text-transform:uppercase;
     letter-spacing:0.03em;
@@ -652,10 +655,11 @@ const ROSTER = [
     "phone": "",
     "email": "rodriguezfamily016@gmail.com",
     "programs": [
-      "Remnant Kids"
+      "Remnant Kids",
+      "Tutoring"
     ],
     "payment": "STEP UP",
-    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices. Added Tutoring 2026-09-25 per Kevin.",
     "id": 2
   },
   {
@@ -698,11 +702,10 @@ const ROSTER = [
       "Basketball Training"
     ],
     "payment": "STEP UP",
-    "detail": "From enrollment form: Spring STEM + Literacy - *5 weeks - (Starts April 30)",
+    "detail": "From enrollment form: Spring STEM + Literacy - *5 weeks - (Starts April 30). Joined Basketball Training (active) 2026-09-25 per Kevin — Jayden's brother.",
     "defaultGrade": "2nd Grade",
     "id": 5,
-    "birthday": "2018-06-06",
-    "defaultActive": "No"
+    "birthday": "2018-06-06"
   },
   {
     "student": "Braden Clark",
@@ -739,11 +742,10 @@ const ROSTER = [
       "Basketball Training"
     ],
     "payment": "STEP UP",
-    "detail": "From enrollment form: Spring STEM + Literacy - *5 weeks - (Starts April 30)",
+    "detail": "From enrollment form: Spring STEM + Literacy - *5 weeks - (Starts April 30). Joined Basketball Training (active) 2026-09-25 per Kevin — Jayden's brother.",
     "defaultGrade": "2nd Grade",
     "id": 8,
-    "birthday": "2018-06-06",
-    "defaultActive": "No"
+    "birthday": "2018-06-06"
   },
   {
     "student": "Brayson Amerman",
@@ -970,10 +972,11 @@ const ROSTER = [
     "phone": "+1 727-953-2864",
     "email": "kroderz546@gmail.com",
     "programs": [
-      "RYLA"
+      "RYLA",
+      "Tutoring"
     ],
     "payment": "STEP UP",
-    "detail": "From enrollment form: Remnant Leadership Academy",
+    "detail": "From enrollment form: Remnant Leadership Academy. Added Tutoring 2026-09-25 per Kevin.",
     "defaultGrade": "7th Grade",
     "id": 23,
     "birthday": "2013-03-29"
@@ -1255,10 +1258,11 @@ const ROSTER = [
     "phone": "",
     "email": "rodriguezfamily016@gmail.com",
     "programs": [
-      "RYLA"
+      "RYLA",
+      "Tutoring"
     ],
     "payment": "STEP UP",
-    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices. Moved from Remnant Kids to RYLA 2026-08-07 per Kevin \u2014 she's 6th grade.",
+    "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices. Moved from Remnant Kids to RYLA 2026-08-07 per Kevin \u2014 she's 6th grade. Added Tutoring 2026-09-25 per Kevin.",
     "defaultGrade": "6th Grade",
     "id": 41
   },
@@ -1474,10 +1478,11 @@ const ROSTER = [
     "phone": "+1 813-469-7155",
     "email": "thebarfields2012@gmail.com",
     "programs": [
-      "Remnant Kids"
+      "Remnant Kids",
+      "Tutoring"
     ],
     "payment": "STEP UP",
-    "detail": "Sibling of Aaron, Sophie, Madelyn, and Penelope Barfield, same contact info. Added to active roster 2026-08-23 per Kevin, no enrollment form on file yet.",
+    "detail": "Sibling of Aaron, Sophie, Madelyn, and Penelope Barfield, same contact info. Added to active roster 2026-08-23 per Kevin, no enrollment form on file yet. Added Tutoring 2026-09-25 per Kevin.",
     "id": 57
   },
   {
@@ -1799,7 +1804,6 @@ function getRow(idOrItem){
   const e = edits[id] || {};
   return {
     notes: e.notes !== undefined ? e.notes : "",
-    active: e.active !== undefined ? e.active : (rosterItem.defaultActive || "Yes"),
     gradeLevel: e.gradeLevel !== undefined ? e.gradeLevel : (rosterItem.defaultGrade || ""),
     shirtSize: e.shirtSize !== undefined ? e.shirtSize : (rosterItem.defaultShirt || ""),
     playLab: e.playLab || rosterItem.default3x3PlayLab || "Yes",
@@ -1811,6 +1815,62 @@ function updateEdit(id, field, value){
   edits[id][field] = value;
   saveEdits(edits);
   pushCloudWrite(id, field, value);
+}
+
+// Active/Inactive is per-program: a student enrolled in two programs (e.g. Remnant Kids and
+// Tutoring) can be inactive in one without affecting the other. `programActive` is the new
+// per-program map inside each student's edit; `defaultProgramActive` is its roster-data
+// equivalent for anyone who should start inactive in only some of their programs.
+function primaryProgramFor(item){
+  // Which program a card's Active toggle currently controls: whatever chip is selected, or
+  // (under "All") the student's first program, matching the same convention already used for
+  // the "Also enrolled in" list on the back of the card.
+  return (state.filter !== "All") ? state.filter : item.programs[0];
+}
+function getProgramActive(item, program){
+  const id = item.id;
+  const e = edits[id] || {};
+  if(e.programActive && e.programActive[program] !== undefined) return e.programActive[program];
+  if(e.active !== undefined) return e.active; // legacy single-flag edit, pre-per-program
+  if(item.defaultProgramActive && item.defaultProgramActive[program] !== undefined) return item.defaultProgramActive[program];
+  return item.defaultActive || "Yes"; // legacy single-flag roster default
+}
+function isActiveInAnyProgram(item){
+  return item.programs.some(p => getProgramActive(item, p) !== "No");
+}
+function updateProgramActive(id, program, value){
+  if(!edits[id]) edits[id] = {};
+  if(!edits[id].programActive) edits[id].programActive = {};
+  edits[id].programActive[program] = value;
+  saveEdits(edits);
+  pushCloudWrite(id, "programActive." + program, value);
+}
+
+// One-time-per-student migration: the app used to have one Active flag covering every program a
+// student was in. The first time this runs after that edit exists, it's converted into the new
+// per-program map (preserving the exact same behavior for everyone) EXCEPT where Kevin asked for
+// an explicit split — so far just Ronin Fenton (id 39): inactive in Tutoring, active in Remnant
+// Kids. Safe to call on every render — once a program's entry exists it's left alone.
+const MANUAL_PROGRAM_ACTIVE_OVERRIDES = {
+  "39": { "Tutoring": "No", "Remnant Kids": "Yes" } // Ronin Fenton, split 2026-09-25 per Kevin
+};
+function migrateLegacyActiveEdits(){
+  Object.keys(edits).forEach(id=>{
+    const e = edits[id];
+    if(!e || e.active === undefined) return;
+    if(!e.programActive) e.programActive = {};
+    const override = MANUAL_PROGRAM_ACTIVE_OVERRIDES[id];
+    const item = findRosterItem(id);
+    const programs = (item && item.programs) || [];
+    programs.forEach(p=>{
+      if(e.programActive[p] === undefined){
+        const val = (override && override[p] !== undefined) ? override[p] : e.active;
+        e.programActive[p] = val;
+        pushCloudWrite(id, "programActive." + p, val);
+      }
+    });
+  });
+  saveEdits(edits);
 }
 // Payment status: manually settable via the 3-segment slider on the front of each card
 // (Needs Invoice / Invoice Sent / Paid), stored as an edit so it syncs across devices like
@@ -1839,8 +1899,8 @@ function sortedFiltered(){
   let list = ROSTER.filter(matchesFilter).filter(matchesSearch);
   const key = state.sortKey;
   list.sort((a,b)=>{
-    const aInactive = getRow(a).active === "No" ? 1 : 0;
-    const bInactive = getRow(b).active === "No" ? 1 : 0;
+    const aInactive = getProgramActive(a, primaryProgramFor(a)) === "No" ? 1 : 0;
+    const bInactive = getProgramActive(b, primaryProgramFor(b)) === "No" ? 1 : 0;
     if(aInactive !== bInactive) return aInactive - bInactive;
     let av, bv;
     if(key === "student"){
@@ -1866,10 +1926,11 @@ function updateCounts(){
   cats.forEach(c=>{
     const items = c === "All" ? ROSTER : ROSTER.filter(item=>item.programs.includes(c));
     const total = items.length;
-    const active = items.filter(item => getRow(item).active !== "No").length;
+    // "All" = active in at least one program; a specific chip = active in that program specifically.
+    const active = items.filter(item => c === "All" ? isActiveInAnyProgram(item) : getProgramActive(item, c) !== "No").length;
     document.getElementById("n-"+c).innerHTML = `<span class="chip-active-num">${active}</span>/${total}`;
   });
-  const activeCount = ROSTER.filter(item => getRow(item).active !== "No").length;
+  const activeCount = ROSTER.filter(item => isActiveInAnyProgram(item)).length;
   document.getElementById("activeCount").textContent = activeCount;
   document.getElementById("totalCount").textContent = ROSTER.length;
 }
@@ -1910,7 +1971,7 @@ function renderBirthdayBanner(){
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const { start, end } = getWeekRange(today);
   const upcoming = ROSTER
-    .filter(item => item.birthday && getRow(item).active !== "No")
+    .filter(item => item.birthday && isActiveInAnyProgram(item))
     .flatMap(item => birthdayOccurrencesInRange(item.birthday, start, end).map(occ => ({ item, occ })))
     .sort((a, b) => a.occ - b.occ);
 
@@ -1938,6 +1999,7 @@ function renderBirthdayBanner(){
 }
 
 function render(){
+  migrateLegacyActiveEdits();
   const list = sortedFiltered();
   const container = document.getElementById("list");
   container.innerHTML = "";
@@ -1945,6 +2007,8 @@ function render(){
 
   list.forEach(item=>{
     const row = getRow(item);
+    const activeProgram = primaryProgramFor(item);
+    const activeStatus = getProgramActive(item, activeProgram);
     const isFlipped = String(item.id) === String(flippedStudentId);
     const payClass = item.payment === "STEP UP" ? "pay-STEP" : "pay-Self";
     const badges = item.programs.map(p=>`<span class="badge ${programBadgeClass(p)}">${p}</span>`).join("");
@@ -1988,7 +2052,7 @@ function render(){
     const otherProgramsRow = otherPrograms.length ? `
       <div class="field">
         <label>Also enrolled in</label>
-        <div class="badges">${otherPrograms.map(p=>`<span class="badge ${programBadgeClass(p)}">${p}</span>`).join("")}</div>
+        <div class="badges">${otherPrograms.map(p=>`<span class="badge ${programBadgeClass(p)}">${p}${getProgramActive(item, p) === "No" ? " (inactive)" : ""}</span>`).join("")}</div>
       </div>
     ` : "";
 
@@ -2004,7 +2068,7 @@ function render(){
 
     const sizeCls = is3x3 ? " card-taller" : (showAcademic ? " card-tall" : "");
     const card = document.createElement("div");
-    card.className = "card" + sizeCls + (isFlipped ? " flipped" : "") + (row.active === "No" ? " inactive" : "");
+    card.className = "card" + sizeCls + (isFlipped ? " flipped" : "") + (activeStatus === "No" ? " inactive" : "");
     card.innerHTML = `
       <div class="stu-flip-inner">
         <div class="stu-face stu-front">
@@ -2014,9 +2078,9 @@ function render(){
               <p class="parent-name">${item.parent}</p>
             </div>
             <div class="active-toggle">
-              <span class="active-label">Active</span>
+              <span class="active-label">Active (${activeProgram})</span>
               <label class="ios-switch">
-                <input type="checkbox" data-id="${item.id}" data-field="active" ${row.active === "Yes" ? "checked" : ""}>
+                <input type="checkbox" data-id="${item.id}" data-program="${activeProgram}" data-field="active" ${activeStatus === "Yes" ? "checked" : ""}>
                 <span class="ios-switch-track"></span>
               </label>
             </div>
@@ -2064,8 +2128,9 @@ function render(){
   container.querySelectorAll('input[data-field="active"]').forEach(el=>{
     el.addEventListener("change", (e)=>{
       const id = e.target.getAttribute("data-id");
+      const program = e.target.getAttribute("data-program");
       const val = e.target.checked ? "Yes" : "No";
-      updateEdit(id, "active", val);
+      updateProgramActive(id, program, val);
       // brief delay so the switch animation is visible before the card jumps to the bottom
       setTimeout(render, 220);
     });
