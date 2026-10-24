@@ -458,6 +458,9 @@
   .owed-due{background:var(--red-bg);color:var(--red);}
   .owed-none{background:#eef0f2;color:var(--muted);}
 
+  /* Highlighted flag shown instead of a birthday when one isn't on file yet */
+  .needs-birthday{font-size:12px;font-weight:bold;padding:3px 10px;border-radius:10px;background:var(--yellow-bg);color:var(--yellow);}
+
   /* View toggle */
   .view-toggle{display:flex;gap:0;background:rgba(255,255,255,0.12);border-radius:10px;padding:3px;margin-top:10px;}
   .view-btn{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:13px;font-weight:bold;color:#cfe0f0;background:transparent;border:none;}
@@ -660,7 +663,8 @@ const ROSTER = [
     ],
     "payment": "STEP UP",
     "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices. Added Tutoring 2026-09-25 per Kevin.",
-    "id": 2
+    "id": 2,
+    "birthday": "2019-04-03"
   },
   {
     "student": "Andres Williams",
@@ -836,10 +840,11 @@ const ROSTER = [
       "Remnant Kids"
     ],
     "payment": "STEP UP",
-    "detail": "From enrollment form: Remnant Kids (Grades  K-5) **Starting August 5** = $240/ month",
+    "detail": "From enrollment form: Remnant Kids (Grades  K-5) **Starting August 5** = $240/ month. Birthday corrected 2026-10-24 per Kevin (form had it wrong — he's Kevin's son).",
     "defaultGrade": "3rd Grade",
     "defaultShirt": "Youth Small",
-    "id": 14
+    "id": 14,
+    "birthday": "2019-08-09"
   },
   {
     "student": "Elijah Rodriguez",
@@ -1264,7 +1269,8 @@ const ROSTER = [
     "payment": "STEP UP",
     "detail": "No enrollment form on file yet \u2014 added from Wix invoice history. Tutoring only on Wix invoices. Moved from Remnant Kids to RYLA 2026-08-07 per Kevin \u2014 she's 6th grade. Added Tutoring 2026-09-25 per Kevin.",
     "defaultGrade": "6th Grade",
-    "id": 41
+    "id": 41,
+    "birthday": "2014-10-04"
   },
   {
     "student": "Yuliani Rodriguez",
@@ -1690,6 +1696,36 @@ const ROSTER = [
     "defaultShirt": "Youth Small",
     "id": 71,
     "birthday": "2020-04-18"
+  },
+  {
+    "student": "Miracle Pearson",
+    "parent": "Deanna Revere",
+    "phone": "+1 863-245-0011",
+    "email": "pearsons.education@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays 9:30am - 2:30pm. Added to active roster 2026-10-24 per Kevin.",
+    "defaultGrade": "11th Grade",
+    "defaultShirt": "Adult Medium",
+    "id": 72,
+    "birthday": "2011-02-28"
+  },
+  {
+    "student": "IsaYah Pearson",
+    "parent": "Deanna Revere",
+    "phone": "+1 863-245-0011",
+    "email": "pearsons.education@gmail.com",
+    "programs": [
+      "RYLA"
+    ],
+    "payment": "STEP UP",
+    "detail": "From enrollment form: Remnant Leadership Academy (Grades 6-12) - Fridays 9:30am - 2:30pm. Added to active roster 2026-10-24 per Kevin.",
+    "defaultGrade": "7th Grade",
+    "defaultShirt": "Youth Medium",
+    "id": 73,
+    "birthday": "2014-07-09"
   }
 ];
 
@@ -1816,9 +1852,14 @@ function initCloudSync(){
         const cloudData = snap.exists ? (snap.data() || {}) : {};
         const merged = mergeEdits(edits, cloudData);
         edits = merged;
+        // Run once-ever migrations/resets strictly AFTER the real cloud state is known (not
+        // before — doing it earlier would let a stale cloud value win the merge and silently
+        // undo the reset). Both mutate `edits` in place and queue their own cloud writes.
+        migrateLegacyActiveEdits();
+        resetAllPaymentStatusOnce();
         saveEdits(edits);
         render();
-        return cloudDocRef.set(merged, {merge:true});
+        return cloudDocRef.set(edits, {merge:true});
       }).then(()=>{
         cloudReady = true;
         // Flush any edits the user made in the brief window before the cloud connection was ready.
@@ -1961,6 +2002,23 @@ function statusInfo(id){
   return {text:"Invoice sent", cls:"status-invoiced"};
 }
 
+// One-time bulk reset: Kevin asked (2026-10-24) to set every student's payment status back to
+// "Needs invoice" across the board. This runs once (guarded by the flag below) the first time
+// this updated app loads on any device, then never fires again automatically — after that the
+// 3-segment slider works exactly as before, fully adjustable per student.
+const PAYMENT_RESET_FLAG = "__paymentStatusReset_20261024";
+function resetAllPaymentStatusOnce(){
+  if(edits[PAYMENT_RESET_FLAG]) return;
+  ROSTER.forEach(item=>{
+    if(!edits[item.id]) edits[item.id] = {};
+    edits[item.id].paymentStatus = "Needs invoice";
+    pushCloudWrite(item.id, "paymentStatus", "Needs invoice");
+  });
+  edits[PAYMENT_RESET_FLAG] = { done: true };
+  pushCloudWrite(PAYMENT_RESET_FLAG, "done", true);
+  saveEdits(edits);
+}
+
 function matchesFilter(item){ return state.filter === "All" ? true : item.programs.includes(state.filter); }
 function matchesSearch(item){
   if(!state.search) return true;
@@ -2094,12 +2152,12 @@ function render(){
     const is3x3 = item.programs.includes("3x3 Basketball");
     const isEditingNotes = notesEditing[item.id] !== undefined ? notesEditing[item.id] : (row.notes === "");
 
-    const birthdayRow = item.birthday ? `
+    const birthdayRow = `
       <div class="info-row">
         <span class="info-label">Birthday</span>
-        <span class="info-static">${formatBirthday(item.birthday)}</span>
+        ${item.birthday ? `<span class="info-static">${formatBirthday(item.birthday)}</span>` : `<span class="needs-birthday">* Needs birthday</span>`}
       </div>
-    ` : "";
+    `;
 
     const academicRows = showAcademic ? `
       <div class="info-row">
